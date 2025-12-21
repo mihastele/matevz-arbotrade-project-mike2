@@ -143,7 +143,7 @@ export class ProductsController {
         }
         callback(null, true);
       },
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
     }),
   )
   async importCSV(@UploadedFile() file: Express.Multer.File) {
@@ -195,7 +195,7 @@ export class ProductsController {
         }
         callback(null, true);
       },
-      limits: { fileSize: 100 * 1024 * 1024 }, // 100MB for ZIP with images
+      limits: { fileSize: 1000 * 1024 * 1024 }, // 1000MB for ZIP with images
     }),
   )
   async importZIP(@UploadedFile() file: Express.Multer.File) {
