@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from './entities/user.entity';
 import { Address } from './entities/address.entity';
@@ -10,13 +11,74 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Address)
     private addressesRepository: Repository<Address>,
+    private configService: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    await this.createAdminIfNotExists();
+  }
+
+  private async createAdminIfNotExists() {
+    const adminSetupKey = this.configService.get<string>('ADMIN_SETUP_KEY');
+    const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
+    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
+    const adminFirstName = this.configService.get<string>('ADMIN_FIRST_NAME', 'Admin');
+    const adminLastName = this.configService.get<string>('ADMIN_LAST_NAME', 'User');
+
+    // Only create admin if setup key is provided and valid
+    if (!adminSetupKey || adminSetupKey === 'your-secure-admin-setup-key-change-this') {
+      this.logger.warn('Admin setup key not configured or using default value. Skipping admin user creation.');
+      return;
+    }
+
+    if (!adminEmail || !adminPassword) {
+      this.logger.warn('Admin email or password not configured. Skipping admin user creation.');
+      return;
+    }
+
+    try {
+      // Check if admin user already exists
+      const existingAdmin = await this.usersRepository.findOne({
+        where: { email: adminEmail },
+      });
+
+      if (existingAdmin) {
+        this.logger.log(`Admin user already exists: ${adminEmail}`);
+        
+        // Update role to admin if it's not already
+        if (existingAdmin.role !== UserRole.ADMIN) {
+          existingAdmin.role = UserRole.ADMIN;
+          await this.usersRepository.save(existingAdmin);
+          this.logger.log(`Updated user ${adminEmail} to admin role`);
+        }
+        return;
+      }
+
+      // Create admin user
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const adminUser = this.usersRepository.create({
+        email: adminEmail,
+        password: hashedPassword,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        role: UserRole.ADMIN,
+      });
+
+      await this.usersRepository.save(adminUser);
+      this.logger.log(`✅ Admin user created successfully: ${adminEmail}`);
+      this.logger.warn('⚠️  IMPORTANT: Please change the default admin password immediately!');
+    } catch (error) {
+      this.logger.error('Failed to create admin user:', error.message);
+    }
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const existingUser = await this.usersRepository.findOne({

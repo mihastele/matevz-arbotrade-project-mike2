@@ -42,6 +42,11 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:80}
+      - ADMIN_SETUP_KEY=${ADMIN_SETUP_KEY}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@arbotrade.si}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-Admin}
+      - ADMIN_LAST_NAME=${ADMIN_LAST_NAME:-User}
     volumes:
       - uploads_data:/app/uploads
     ports:
