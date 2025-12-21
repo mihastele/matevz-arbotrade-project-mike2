@@ -37,8 +37,8 @@ function getStatusColor(status: string): string {
 
 onMounted(async () => {
   try {
-    const response = await ordersApi.getAll({ limit: 5 })
-    recentOrders.value = response.data.items || response.data
+    const response = await ordersApi.getMyOrders(1, 5)
+    recentOrders.value = response.data
   } catch (error) {
     console.error('Failed to load orders:', error)
   } finally {

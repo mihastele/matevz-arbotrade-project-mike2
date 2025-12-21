@@ -4,7 +4,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import { useToast } from '@/composables/useToast'
-import type { Order } from '@/types'
+import type { Order, OrderStatus } from '@/types'
 
 const route = useRoute()
 const toast = useToast()
@@ -51,8 +51,8 @@ async function updateStatus(status: string) {
   if (!order.value) return
   
   try {
-    await ordersApi.update(order.value.id, { status })
-    order.value.status = status
+    await ordersApi.updateStatus(order.value.id, { status: status as OrderStatus })
+    order.value.status = status as OrderStatus
     toast.success('Order status updated')
   } catch (error) {
     toast.error('Failed to update status')

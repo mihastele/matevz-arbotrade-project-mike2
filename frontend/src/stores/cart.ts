@@ -13,6 +13,7 @@ export const useCartStore = defineStore('cart', () => {
   const items = computed(() => cart.value?.items || [])
   const itemCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
   const subtotal = computed(() => cart.value?.subtotal || 0)
+  const total = computed(() => cart.value?.total || cart.value?.subtotal || 0)
   const isEmpty = computed(() => items.value.length === 0)
 
   function getGuestToken(): string {
@@ -106,6 +107,7 @@ export const useCartStore = defineStore('cart', () => {
     items,
     itemCount,
     subtotal,
+    total,
     isEmpty,
     fetchCart,
     addItem,

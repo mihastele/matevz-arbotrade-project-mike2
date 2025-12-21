@@ -23,11 +23,11 @@ const activeTab = ref<'description' | 'specifications'>('description')
 
 const images = computed(() => {
   if (!product.value?.images?.length) {
-    return [{ id: '0', url: '/placeholder.jpg', altText: 'Product image', isMain: true, sortOrder: 0 }]
+    return [{ id: '0', url: '/placeholder.jpg', alt: 'Product image', isPrimary: true, sortOrder: 0, type: 'image' as const }]
   }
   return product.value.images.sort((a, b) => {
-    if (a.isMain) return -1
-    if (b.isMain) return 1
+    if (a.isPrimary) return -1
+    if (b.isPrimary) return 1
     return a.sortOrder - b.sortOrder
   })
 })
@@ -46,7 +46,7 @@ const originalPrice = computed(() => {
 })
 
 const hasDiscount = computed(() => {
-  if (selectedVariant.value) {
+  if (selectedVariant.value?.price) {
     return selectedVariant.value.price < originalPrice.value
   }
   return product.value?.salePrice && product.value.salePrice < product.value.price
@@ -70,7 +70,7 @@ const variantOptions = computed(() => {
   if (!product.value?.variants?.length) return []
   return product.value.variants.map(v => ({
     value: v.id,
-    label: `${v.name}${v.stockQuantity === 0 ? ' (Out of Stock)' : ''}`
+    label: `${v.name}${v.stock === 0 ? ' (Out of Stock)' : ''}`
   }))
 })
 
@@ -90,7 +90,11 @@ async function addToCart() {
   
   addingToCart.value = true
   try {
-    await cartStore.addItem(product.value.id, quantity.value, selectedVariant.value?.id)
+    await cartStore.addItem({
+      productId: product.value.id,
+      quantity: quantity.value,
+      variantId: selectedVariant.value?.id
+    })
     toast.success('Added to cart!')
     quantity.value = 1
   } catch (error) {
@@ -105,10 +109,10 @@ async function loadProduct() {
   try {
     const slug = route.params.slug as string
     const response = await productsApi.getBySlug(slug)
-    product.value = response.data
+    product.value = response
     
     // Set default variant if available
-    if (product.value.variants?.length) {
+    if (product.value?.variants?.length) {
       selectedVariant.value = product.value.variants[0]
     }
   } catch (error) {
@@ -151,7 +155,7 @@ watch(() => route.params.slug, loadProduct)
           <div class="aspect-square bg-secondary-100 rounded-lg overflow-hidden mb-4">
             <img 
               :src="currentImage.url" 
-              :alt="currentImage.altText || product.name"
+              :alt="currentImage.alt || product.name"
               class="w-full h-full object-cover"
             />
           </div>
@@ -169,7 +173,7 @@ watch(() => route.params.slug, loadProduct)
             >
               <img 
                 :src="image.url" 
-                :alt="image.altText || `${product.name} ${index + 1}`"
+                :alt="image.alt || `${product.name} ${index + 1}`"
                 class="w-full h-full object-cover"
               />
             </button>

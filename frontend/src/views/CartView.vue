@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
+import type { CartItem } from '@/types'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -20,15 +21,15 @@ function formatPrice(price: number): string {
   }).format(price)
 }
 
-function getItemImage(item: typeof cart.value.items[0]): string {
-  const mainImage = item.product.images?.find(img => img.isMain) || item.product.images?.[0]
+function getItemImage(item: CartItem): string {
+  const mainImage = item.product.images?.find(img => img.isPrimary) || item.product.images?.[0]
   return mainImage?.url || '/placeholder.jpg'
 }
 
 async function updateQuantity(itemId: string, quantity: number) {
   if (quantity < 1) return
   try {
-    await cartStore.updateItem(itemId, quantity)
+    await cartStore.updateItem(itemId, { quantity })
   } catch (error) {
     toast.error('Failed to update quantity')
   }
@@ -81,7 +82,7 @@ function proceedToCheckout() {
         <!-- Cart Items -->
         <div class="lg:flex-1 space-y-4">
           <div
-            v-for="item in cart.items"
+            v-for="item in cart?.items"
             :key="item.id"
             class="flex gap-4 p-4 bg-white rounded-lg shadow-sm"
           >

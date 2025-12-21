@@ -36,7 +36,7 @@ async function loadCategories() {
   loading.value = true
   try {
     const response = await categoriesApi.getAll()
-    categories.value = response.data
+    categories.value = response
   } catch (error) {
     toast.error('Failed to load categories')
   } finally {

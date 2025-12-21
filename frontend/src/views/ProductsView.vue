@@ -6,7 +6,7 @@ import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { productsApi } from '@/api/products'
 import { categoriesApi } from '@/api/categories'
-import type { Product, Category, PaginatedResponse } from '@/types'
+import type { Product, Category } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,11 +58,10 @@ async function loadProducts() {
     if (maxPrice.value) params.maxPrice = Number(maxPrice.value)
     
     const response = await productsApi.getAll(params)
-    const data: PaginatedResponse<Product> = response.data
     
-    products.value = data.items
-    pagination.value.total = data.total
-    pagination.value.totalPages = data.totalPages
+    products.value = response.data
+    pagination.value.total = response.meta.total
+    pagination.value.totalPages = response.meta.totalPages
   } catch (error) {
     console.error('Failed to load products:', error)
   } finally {
@@ -73,7 +72,7 @@ async function loadProducts() {
 async function loadCategories() {
   try {
     const response = await categoriesApi.getAll()
-    categories.value = response.data
+    categories.value = response
   } catch (error) {
     console.error('Failed to load categories:', error)
   }

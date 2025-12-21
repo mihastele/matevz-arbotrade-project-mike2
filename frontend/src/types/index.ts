@@ -52,6 +52,7 @@ export interface ProductImage {
   type: 'image' | 'video' | 'pdf'
   sortOrder: number
   isPrimary: boolean
+  isMain?: boolean
 }
 
 export interface ProductVariant {
@@ -87,6 +88,7 @@ export interface Product {
   allowBackorder: boolean
   status: 'draft' | 'published' | 'archived'
   isFeatured: boolean
+  isActive?: boolean
   category?: Category
   categoryId?: string
   categories?: Category[]
@@ -118,6 +120,7 @@ export interface ProductsQuery {
   brand?: string
   sortBy?: string
   sortOrder?: 'ASC' | 'DESC'
+  categorySlug?: string
 }
 
 // Category types
@@ -132,6 +135,7 @@ export interface Category {
   parent?: Category
   parentId?: string
   children?: Category[]
+  productCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -153,6 +157,7 @@ export interface Cart {
   guestToken?: string
   items: CartItem[]
   subtotal: number
+  total?: number
   createdAt: string
   updatedAt: string
 }
@@ -190,6 +195,7 @@ export interface OrderItem {
   variantName?: string
   variantAttributes?: Record<string, string>
   quantity: number
+  price: number
   unitPrice: number
   total: number
   imageUrl?: string
@@ -202,10 +208,12 @@ export interface Order {
   id: string
   orderNumber: string
   userId?: string
+  user?: User
   guestEmail?: string
   items: OrderItem[]
   subtotal: number
   tax: number
+  taxAmount?: number
   shippingCost: number
   discount: number
   total: number

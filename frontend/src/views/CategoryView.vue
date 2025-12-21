@@ -18,7 +18,7 @@ const slug = computed(() => route.params.slug as string)
 async function loadCategory() {
   try {
     const response = await categoriesApi.getBySlug(slug.value)
-    category.value = response.data
+    category.value = response
   } catch (error) {
     console.error('Failed to load category:', error)
   }

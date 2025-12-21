@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import BaseButton from '@/components/ui/BaseButton.vue'
 import { ordersApi } from '@/api/orders'
 import { useToast } from '@/composables/useToast'
-import type { Order } from '@/types'
+import type { Order, OrderStatus } from '@/types'
 
 const toast = useToast()
 
@@ -69,10 +68,10 @@ async function loadOrders() {
 
 async function updateStatus(orderId: string, status: string) {
   try {
-    await ordersApi.updateStatus(orderId, status)
+    await ordersApi.updateStatus(orderId, { status: status as OrderStatus })
     const order = orders.value.find(o => o.id === orderId)
     if (order) {
-      order.status = status
+      order.status = status as OrderStatus
     }
     toast.success('Order status updated')
   } catch (error) {

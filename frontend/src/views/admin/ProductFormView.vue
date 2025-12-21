@@ -60,7 +60,7 @@ function handleNameChange() {
 async function loadCategories() {
   try {
     const response = await categoriesApi.getAll()
-    categories.value = response.data
+    categories.value = response
   } catch (error) {
     console.error('Failed to load categories:', error)
   }
@@ -72,7 +72,7 @@ async function loadProduct() {
   loading.value = true
   try {
     const response = await productsApi.getOne(route.params.id as string)
-    const product: Product = response.data
+    const product: Product = response
     
     form.value = {
       name: product.name,

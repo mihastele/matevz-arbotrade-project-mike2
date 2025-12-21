@@ -109,22 +109,23 @@ async function placeOrder() {
     }
 
     const response = await ordersApi.create(orderData)
-    const order = response.data
+    const order = response
 
     if (paymentMethod.value === 'stripe') {
       // Create payment intent
-      const paymentResponse = await paymentsApi.createIntent(order.id)
-      const { clientSecret } = paymentResponse.data
+      const paymentResponse = await paymentsApi.createPaymentIntent(order.id)
+      const { clientSecret } = paymentResponse
       
       // In production, integrate with Stripe.js here
       // For now, redirect to a success page
+      console.log('Payment intent created:', clientSecret)
       toast.success('Order placed successfully!')
       await cartStore.clearCart()
-      router.push(`/account/orders/${order.id}`)
+      router.push(`/order-confirmation/${order.id}`)
     } else {
       toast.success('Order placed successfully!')
       await cartStore.clearCart()
-      router.push(`/account/orders/${order.id}`)
+      router.push(`/order-confirmation/${order.id}`)
     }
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }

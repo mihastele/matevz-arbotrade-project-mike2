@@ -11,7 +11,7 @@ const props = defineProps({
 })
 
 const mainImage = computed(() => {
-  const img = props.product.images?.find(i => i.isMain) || props.product.images?.[0]
+  const img = props.product.images?.find(i => i.isPrimary) || props.product.images?.[0]
   return img?.url || '/placeholder.jpg'
 })
 
@@ -71,7 +71,7 @@ function formatPrice(price: number): string {
 
       <!-- Out of Stock -->
       <div 
-        v-if="product.stockQuantity === 0"
+        v-if="product.stock === 0"
         class="absolute inset-0 bg-black/50 flex items-center justify-center"
       >
         <span class="text-white font-semibold">Out of Stock</span>

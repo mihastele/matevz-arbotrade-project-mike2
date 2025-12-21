@@ -37,7 +37,7 @@ async function handleSubmit() {
   
   loading.value = true
   try {
-    await authStore.login(email.value, password.value)
+    await authStore.login({ email: email.value, password: password.value })
     toast.success('Welcome back!')
     
     // Redirect to intended page or home
