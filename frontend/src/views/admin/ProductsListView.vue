@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { productsApi } from '@/api/products'
+import type { ImportResult } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import type { Product } from '@/types'
 
@@ -12,6 +13,14 @@ const toast = useToast()
 const products = ref<Product[]>([])
 const loading = ref(true)
 const search = ref('')
+
+// Import/Export state
+const showImportModal = ref(false)
+const importFile = ref<File | null>(null)
+const importType = ref<'csv' | 'zip'>('csv')
+const importing = ref(false)
+const importResult = ref<ImportResult | null>(null)
+const exporting = ref(false)
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('sl-SI', {
@@ -51,6 +60,89 @@ function handleSearch() {
   loadProducts()
 }
 
+// Import/Export functions
+function openImportModal() {
+  showImportModal.value = true
+  importFile.value = null
+  importResult.value = null
+}
+
+function closeImportModal() {
+  showImportModal.value = false
+  importFile.value = null
+  importResult.value = null
+}
+
+function handleFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    importFile.value = file
+    
+    // Auto-detect type from extension
+    if (file.name.endsWith('.zip')) {
+      importType.value = 'zip'
+    } else if (file.name.endsWith('.csv')) {
+      importType.value = 'csv'
+    }
+  }
+}
+
+async function handleImport() {
+  if (!importFile.value) {
+    toast.error('Please select a file')
+    return
+  }
+
+  importing.value = true
+  importResult.value = null
+
+  try {
+    if (importType.value === 'zip') {
+      importResult.value = await productsApi.importZIP(importFile.value)
+    } else {
+      importResult.value = await productsApi.importCSV(importFile.value)
+    }
+
+    if (importResult.value.success > 0) {
+      toast.success(`Successfully imported ${importResult.value.success} products`)
+      await loadProducts()
+    }
+
+    if (importResult.value.failed > 0) {
+      toast.error(`${importResult.value.failed} products failed to import`)
+    }
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string }
+    toast.error(err.response?.data?.message || err.message || 'Import failed')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    const blob = await productsApi.exportCSV()
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    toast.success('Products exported successfully')
+  } catch (error) {
+    toast.error('Export failed')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(loadProducts)
 </script>
 
@@ -58,7 +150,20 @@ onMounted(loadProducts)
   <div>
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-secondary-900">Products</h1>
-      <RouterLink to="/admin/products/new">
+      <div class="flex gap-2">
+        <BaseButton variant="secondary" @click="openImportModal">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Import
+        </BaseButton>
+        <BaseButton variant="secondary" @click="handleExport" :loading="exporting">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export CSV
+        </BaseButton>
+        <RouterLink to="/admin/products/new">
         <BaseButton>
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -195,5 +300,90 @@ onMounted(loadProducts)
         </tbody>
       </table>
     </div>
+
+    <!-- Import Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showImportModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        @click.self="closeImportModal"
+      >
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div class="flex items-center justify-between px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold text-secondary-900">Import Products</h3>
+            <button
+              @click="closeImportModal"
+              class="text-secondary-400 hover:text-secondary-600 transition-colors"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="p-6 space-y-4">
+            <!-- File type selection -->
+            <div>
+              <label class="block text-sm font-medium text-secondary-700 mb-2">Import Type</label>
+              <div class="flex gap-4">
+                <label class="flex items-center">
+                  <input type="radio" v-model="importType" value="csv" class="mr-2" />
+                  <span>CSV File</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" v-model="importType" value="zip" class="mr-2" />
+                  <span>ZIP with Images</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- File input -->
+            <div>
+              <label class="block text-sm font-medium text-secondary-700 mb-2">Select File</label>
+              <input
+                type="file"
+                :accept="importType === 'zip' ? '.zip' : '.csv'"
+                @change="handleFileSelect"
+                class="block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              />
+              <p class="text-xs text-secondary-500 mt-1">
+                {{ importType === 'zip' 
+                  ? 'ZIP file should contain products.csv and an images/ folder' 
+                  : 'CSV file in WooCommerce export format' 
+                }}
+              </p>
+            </div>
+
+            <!-- Import result -->
+            <div v-if="importResult" class="mt-4 p-4 rounded-lg" :class="importResult.failed === 0 ? 'bg-green-50' : 'bg-yellow-50'">
+              <p class="font-medium" :class="importResult.failed === 0 ? 'text-green-800' : 'text-yellow-800'">
+                Import completed: {{ importResult.success }} successful, {{ importResult.failed }} failed
+              </p>
+              <div v-if="importResult.errors.length > 0" class="mt-2 max-h-32 overflow-y-auto">
+                <p class="text-sm text-yellow-700" v-for="(err, idx) in importResult.errors.slice(0, 10)" :key="idx">
+                  Row {{ err.row }}: {{ err.error }} {{ err.name ? `(${err.name})` : '' }}
+                </p>
+                <p v-if="importResult.errors.length > 10" class="text-sm text-yellow-700">
+                  ... and {{ importResult.errors.length - 10 }} more errors
+                </p>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4">
+              <BaseButton type="button" variant="secondary" @click="closeImportModal">
+                Cancel
+              </BaseButton>
+              <BaseButton 
+                @click="handleImport" 
+                :loading="importing" 
+                :disabled="!importFile"
+              >
+                Import
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

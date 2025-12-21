@@ -20,7 +20,7 @@ export default {
 
   // Hero Section
   hero: {
-    title: 'Premium arboristična oprema',
+    title: 'Vrhunska arboristična oprema',
     subtitle: 'Vaša profesionalna trgovina za arboristično opremo in dodatke',
     shopNow: 'Nakupuj zdaj',
   },

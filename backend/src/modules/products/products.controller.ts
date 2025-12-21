@@ -8,9 +8,21 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Response } from 'express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ProductsService } from './products.service';
+import { ImportExportService } from './import-export.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
@@ -19,10 +31,21 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
+const importStorage = diskStorage({
+  destination: './uploads/temp',
+  filename: (req, file, callback) => {
+    const uniqueName = `import-${uuidv4()}${extname(file.originalname)}`;
+    callback(null, uniqueName);
+  },
+});
+
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly importExportService: ImportExportService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -90,5 +113,140 @@ export class ProductsController {
   @ApiOperation({ summary: 'Delete a product (admin only)' })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
+  }
+
+  // Import/Export endpoints
+  @Post('import/csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Import products from CSV file (admin only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file with products data',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: importStorage,
+      fileFilter: (req, file, callback) => {
+        if (!file.originalname.match(/\.(csv)$/i)) {
+          callback(new BadRequestException('Only CSV files are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    }),
+  )
+  async importCSV(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      const csvContent = fs.readFileSync(file.path, 'utf-8');
+      const result = await this.importExportService.importFromCSV(csvContent);
+      
+      // Clean up temp file
+      fs.unlinkSync(file.path);
+      
+      return result;
+    } catch (error) {
+      // Clean up temp file on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
+  }
+
+  @Post('import/zip')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Import products from ZIP file with images (admin only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'ZIP file containing products.csv and images/ folder',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: importStorage,
+      fileFilter: (req, file, callback) => {
+        if (!file.originalname.match(/\.(zip)$/i)) {
+          callback(new BadRequestException('Only ZIP files are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 100 * 1024 * 1024 }, // 100MB for ZIP with images
+    }),
+  )
+  async importZIP(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const extractPath = path.join('./uploads/temp', `extract-${uuidv4()}`);
+
+    try {
+      // Ensure extract directory exists
+      fs.mkdirSync(extractPath, { recursive: true });
+      
+      const result = await this.importExportService.importFromZIP(file.path, extractPath);
+      
+      // Clean up temp file
+      fs.unlinkSync(file.path);
+      
+      return result;
+    } catch (error) {
+      // Clean up temp files on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      if (fs.existsSync(extractPath)) {
+        fs.rmSync(extractPath, { recursive: true, force: true });
+      }
+      throw error;
+    }
+  }
+
+  @Get('export/csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export products to CSV file (admin only)' })
+  @ApiQuery({ name: 'categoryIds', required: false, type: [String], description: 'Filter by category IDs' })
+  async exportCSV(
+    @Res() res: Response,
+    @Query('categoryIds') categoryIds?: string | string[],
+  ) {
+    const options = {
+      categoryIds: categoryIds 
+        ? (Array.isArray(categoryIds) ? categoryIds : [categoryIds])
+        : undefined,
+    };
+
+    const csvContent = await this.importExportService.exportToCSV(options);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=products-export.csv');
+    res.send('\uFEFF' + csvContent); // Add BOM for Excel UTF-8 compatibility
   }
 }
