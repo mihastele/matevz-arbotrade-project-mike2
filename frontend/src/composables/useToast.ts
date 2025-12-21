@@ -4,23 +4,23 @@ export function useToast() {
   const toastStore = useToastStore()
 
   function showToast(options: { type: 'success' | 'error' | 'warning' | 'info'; message: string; duration?: number }) {
-    toastStore.addToast(options.type, options.message, options.duration)
+    toastStore.addToast({ type: options.type, message: options.message, duration: options.duration })
   }
 
   function success(message: string, duration?: number) {
-    toastStore.addToast('success', message, duration)
+    toastStore.addToast({ type: 'success', message, duration })
   }
 
   function error(message: string, duration?: number) {
-    toastStore.addToast('error', message, duration)
+    toastStore.addToast({ type: 'error', message, duration })
   }
 
   function warning(message: string, duration?: number) {
-    toastStore.addToast('warning', message, duration)
+    toastStore.addToast({ type: 'warning', message, duration })
   }
 
   function info(message: string, duration?: number) {
-    toastStore.addToast('info', message, duration)
+    toastStore.addToast({ type: 'info', message, duration })
   }
 
   return {
