@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import ProductCard from '@/components/product/ProductCard.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -10,6 +11,7 @@ import type { Product, Category } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
@@ -29,14 +31,14 @@ const sortOrder = ref<'ASC' | 'DESC'>('DESC')
 const minPrice = ref('')
 const maxPrice = ref('')
 
-const sortOptions = [
-  { value: 'createdAt-DESC', label: 'Newest First' },
-  { value: 'createdAt-ASC', label: 'Oldest First' },
-  { value: 'price-ASC', label: 'Price: Low to High' },
-  { value: 'price-DESC', label: 'Price: High to Low' },
-  { value: 'name-ASC', label: 'Name: A to Z' },
-  { value: 'name-DESC', label: 'Name: Z to A' },
-]
+const sortOptions = computed(() => [
+  { value: 'createdAt-DESC', label: t('productsPage.sort.newestFirst') },
+  { value: 'createdAt-ASC', label: t('productsPage.sort.oldestFirst') },
+  { value: 'price-ASC', label: t('productsPage.sort.priceLowHigh') },
+  { value: 'price-DESC', label: t('productsPage.sort.priceHighLow') },
+  { value: 'name-ASC', label: t('productsPage.sort.nameAZ') },
+  { value: 'name-DESC', label: t('productsPage.sort.nameZA') },
+])
 
 const categoryOptions = computed(() => {
   return categories.value.map(c => ({ value: c.id, label: c.name }))
@@ -162,8 +164,8 @@ watch(() => route.query.category, (newCategory) => {
     <div class="container-custom">
       <!-- Header -->
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-secondary-900">Products</h1>
-        <p class="text-secondary-600 mt-2">Browse our collection of quality products</p>
+        <h1 class="text-3xl font-bold text-secondary-900">{{ t('productsPage.title') }}</h1>
+        <p class="text-secondary-600 mt-2">{{ t('productsPage.subtitle') }}</p>
       </div>
 
       <div class="lg:flex lg:gap-8">
@@ -171,12 +173,12 @@ watch(() => route.query.category, (newCategory) => {
         <aside class="hidden lg:block lg:w-64 flex-shrink-0">
           <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
             <div class="flex items-center justify-between mb-6">
-              <h3 class="font-semibold text-secondary-900">Filters</h3>
+              <h3 class="font-semibold text-secondary-900">{{ t('productsPage.filters') }}</h3>
               <button 
                 @click="clearFilters"
                 class="text-sm text-primary-600 hover:text-primary-700"
               >
-                Clear all
+                {{ t('productsPage.clearAll') }}
               </button>
             </div>
 
@@ -184,9 +186,9 @@ watch(() => route.query.category, (newCategory) => {
             <div class="mb-6">
               <BaseSelect
                 v-model="categoryId"
-                label="Category"
+                :label="t('productsPage.category')"
                 :options="categoryOptions"
-                placeholder="All Categories"
+                :placeholder="t('productsPage.allCategories')"
                 @update:model-value="handleCategoryChange"
               />
             </div>
@@ -194,19 +196,19 @@ watch(() => route.query.category, (newCategory) => {
             <!-- Price Range -->
             <div class="mb-6">
               <label class="block text-sm font-medium text-secondary-700 mb-2">
-                Price Range
+                {{ t('productsPage.priceRange') }}
               </label>
               <div class="flex gap-2">
                 <BaseInput
                   v-model="minPrice"
                   type="number"
-                  placeholder="Min"
+                  :placeholder="t('productsPage.min')"
                   @change="handleSearch"
                 />
                 <BaseInput
                   v-model="maxPrice"
                   type="number"
-                  placeholder="Max"
+                  :placeholder="t('productsPage.max')"
                   @change="handleSearch"
                 />
               </div>
@@ -225,7 +227,7 @@ watch(() => route.query.category, (newCategory) => {
                   <input
                     v-model="search"
                     type="text"
-                    placeholder="Search products..."
+                    :placeholder="t('productsPage.searchPlaceholder')"
                     class="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     @keyup.enter="handleSearch"
                   />
@@ -254,7 +256,7 @@ watch(() => route.query.category, (newCategory) => {
               <BaseSelect
                 v-model="categoryId"
                 :options="categoryOptions"
-                placeholder="All Categories"
+                :placeholder="t('productsPage.allCategories')"
                 @update:model-value="handleCategoryChange"
               />
             </div>
@@ -262,9 +264,9 @@ watch(() => route.query.category, (newCategory) => {
 
           <!-- Results Info -->
           <div class="flex items-center justify-between mb-4 text-sm text-secondary-600">
-            <span>{{ pagination.total }} products found</span>
+            <span>{{ pagination.total }} {{ t('productsPage.results') }}</span>
             <span v-if="pagination.totalPages > 1">
-              Page {{ pagination.page }} of {{ pagination.totalPages }}
+              {{ t('productsPage.page') }} {{ pagination.page }} {{ t('productsPage.of') }} {{ pagination.totalPages }}
             </span>
           </div>
 
@@ -291,10 +293,10 @@ watch(() => route.query.category, (newCategory) => {
             <svg class="w-16 h-16 mx-auto text-secondary-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
-            <h3 class="text-lg font-medium text-secondary-900 mb-2">No products found</h3>
-            <p class="text-secondary-500 mb-4">Try adjusting your search or filters</p>
+            <h3 class="text-lg font-medium text-secondary-900 mb-2">{{ t('productsPage.noResults') }}</h3>
+            <p class="text-secondary-500 mb-4">{{ t('productsPage.subtitle') }}</p>
             <button @click="clearFilters" class="btn-primary">
-              Clear Filters
+              {{ t('productsPage.clearAll') }}
             </button>
           </div>
 
@@ -306,7 +308,7 @@ watch(() => route.query.category, (newCategory) => {
                 class="px-3 py-2 rounded-lg border border-secondary-300 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handlePageChange(pagination.page - 1)"
               >
-                Previous
+                {{ t('common.previous') }}
               </button>
               
               <template v-for="page in pagination.totalPages" :key="page">
@@ -335,7 +337,7 @@ watch(() => route.query.category, (newCategory) => {
                 class="px-3 py-2 rounded-lg border border-secondary-300 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handlePageChange(pagination.page + 1)"
               >
-                Next
+                {{ t('common.next') }}
               </button>
             </nav>
           </div>

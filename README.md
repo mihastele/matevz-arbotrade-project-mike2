@@ -298,6 +298,100 @@ npm run preview        # Preview production build
 npm run lint           # Run ESLint
 ```
 
+### Admin Setup
+
+#### Creating an Admin User
+
+There are two methods to create an admin user:
+
+**Method 1: Database Update (Recommended)**
+
+After registering a normal user account through the UI, you can promote them to admin via database:
+
+```bash
+# Connect to PostgreSQL
+docker exec -it vuenest-postgres-1 psql -U postgres -d vuenest
+
+# Or if not using Docker:
+psql -U postgres -d vuenest
+```
+
+Then run this SQL to promote a user to admin:
+
+```sql
+-- Replace 'user@example.com' with the actual email
+UPDATE users 
+SET role = 'admin' 
+WHERE email = 'user@example.com';
+
+-- Verify the change
+SELECT id, email, role FROM users WHERE email = 'user@example.com';
+
+-- Exit psql
+\q
+```
+
+**Method 2: Direct User Creation**
+
+Create an admin user directly in the database:
+
+```sql
+-- Connect to database (as shown above)
+-- Then create the admin user (replace values as needed):
+
+INSERT INTO users (email, password, "firstName", "lastName", role, "createdAt", "updatedAt")
+VALUES (
+  'admin@arbotrade.com',
+  '$2b$10$YourHashedPasswordHere',  -- You'll need to hash this first
+  'Admin',
+  'User',
+  'admin',
+  NOW(),
+  NOW()
+);
+```
+
+**Important**: For Method 2, you need to hash the password first. You can use this Node.js command:
+
+```bash
+cd backend
+node -e "const bcrypt = require('bcrypt'); bcrypt.hash('YourPassword123', 10).then(hash => console.log(hash));"
+```
+
+Then replace `$2b$10$YourHashedPasswordHere` with the output hash.
+
+**Method 3: Registration + Database Update (Easiest)**
+
+1. Register a new account through the UI at http://localhost/register
+2. Use your desired admin credentials (e.g., admin@arbotrade.com)
+3. Immediately promote the account using Method 1 above
+4. Log out and log back in to access admin features
+
+#### Accessing Admin Features
+
+Once you have an admin account:
+
+1. Log in with your admin credentials
+2. Click on your profile in the top right
+3. You'll see "Admin Panel" link (only visible to admin users)
+4. Access routes like:
+   - `/admin/dashboard` - Overview and statistics
+   - `/admin/products` - Product management
+   - `/admin/orders` - Order management
+   - `/admin/categories` - Category management
+
+#### Admin Role Verification
+
+To verify a user's admin status:
+
+```bash
+# Via database
+docker exec -it vuenest-postgres-1 psql -U postgres -d vuenest -c "SELECT email, role FROM users;"
+
+# Or check the JWT token payload after login (developers)
+# Admin users will have role: 'admin' in the token
+```
+
 ---
 
 ## 🏭 Production Deployment

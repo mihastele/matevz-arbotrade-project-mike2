@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import type { CartItem } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const cartStore = useCartStore()
 const toast = useToast()
@@ -31,16 +33,16 @@ async function updateQuantity(itemId: string, quantity: number) {
   try {
     await cartStore.updateItem(itemId, { quantity })
   } catch (error) {
-    toast.error('Failed to update quantity')
+    toast.error(t('cartPage.updateFailed'))
   }
 }
 
 async function removeItem(itemId: string) {
   try {
     await cartStore.removeItem(itemId)
-    toast.success('Item removed from cart')
+    toast.success(t('cartPage.itemRemoved'))
   } catch (error) {
-    toast.error('Failed to remove item')
+    toast.error(t('cartPage.removeFailed'))
   }
 }
 
@@ -52,7 +54,7 @@ function proceedToCheckout() {
 <template>
   <div class="py-8">
     <div class="container-custom">
-      <h1 class="text-3xl font-bold text-secondary-900 mb-8">Shopping Cart</h1>
+      <h1 class="text-3xl font-bold text-secondary-900 mb-8">{{ t('cartPage.title') }}</h1>
 
       <!-- Loading State -->
       <div v-if="loading" class="animate-pulse space-y-4">
@@ -70,10 +72,10 @@ function proceedToCheckout() {
         <svg class="w-20 h-20 mx-auto text-secondary-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
-        <h2 class="text-xl font-semibold text-secondary-900 mb-2">Your cart is empty</h2>
-        <p class="text-secondary-500 mb-6">Start shopping to add items to your cart</p>
+        <h2 class="text-xl font-semibold text-secondary-900 mb-2">{{ t('cartPage.empty') }}</h2>
+        <p class="text-secondary-500 mb-6">{{ t('cartPage.emptyDescription') }}</p>
         <RouterLink to="/products" class="btn-primary">
-          Browse Products
+          {{ t('cartPage.browseProducts') }}
         </RouterLink>
       </div>
 
@@ -135,7 +137,7 @@ function proceedToCheckout() {
                   class="text-red-600 hover:text-red-700 text-sm"
                   @click="removeItem(item.id)"
                 >
-                  Remove
+                  {{ t('cartPage.remove') }}
                 </button>
               </div>
             </div>
@@ -146,7 +148,7 @@ function proceedToCheckout() {
                 {{ formatPrice(item.price * item.quantity) }}
               </p>
               <p v-if="item.quantity > 1" class="text-sm text-secondary-500">
-                {{ formatPrice(item.price) }} each
+                {{ formatPrice(item.price) }} {{ t('cartPage.each') }}
               </p>
             </div>
           </div>
@@ -155,35 +157,35 @@ function proceedToCheckout() {
         <!-- Order Summary -->
         <div class="lg:w-80 mt-8 lg:mt-0">
           <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-            <h2 class="text-lg font-semibold text-secondary-900 mb-4">Order Summary</h2>
+            <h2 class="text-lg font-semibold text-secondary-900 mb-4">{{ t('cartPage.orderSummary') }}</h2>
 
             <div class="space-y-3 text-sm">
               <div class="flex justify-between">
-                <span class="text-secondary-600">Subtotal</span>
+                <span class="text-secondary-600">{{ t('cartPage.subtotal') }}</span>
                 <span class="font-medium">{{ formatPrice(cartStore.subtotal) }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-secondary-600">Shipping</span>
-                <span class="text-secondary-500">Calculated at checkout</span>
+                <span class="text-secondary-600">{{ t('cartPage.shipping') }}</span>
+                <span class="text-secondary-500">{{ t('cartPage.shippingCalculated') }}</span>
               </div>
             </div>
 
             <hr class="my-4" />
 
             <div class="flex justify-between text-lg font-semibold mb-6">
-              <span>Total</span>
+              <span>{{ t('cartPage.total') }}</span>
               <span class="text-primary-600">{{ formatPrice(cartStore.total) }}</span>
             </div>
 
             <BaseButton class="w-full" @click="proceedToCheckout">
-              Proceed to Checkout
+              {{ t('cartPage.checkout') }}
             </BaseButton>
 
             <RouterLink 
               to="/products" 
               class="block text-center text-sm text-primary-600 hover:text-primary-700 mt-4"
             >
-              Continue Shopping
+              {{ t('cartPage.continueShopping') }}
             </RouterLink>
           </div>
         </div>
