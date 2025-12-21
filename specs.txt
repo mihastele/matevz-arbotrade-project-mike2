@@ -1,0 +1,50 @@
+Build a full‑stack ecommerce platform with a **Vue.js** frontend and **NestJS** backend, optimized for a sleek desktop and mobile experience with consistent, high‑quality UI/UX on all screens.
+
+## High-level goals
+
+- Modern SPA/SSR storefront in Vue (or Nuxt) with responsive, minimal, and sleek design for desktop, tablet, and mobile.
+- NestJS API as a clean, modular backend handling auth, catalog, cart, orders, and payments.
+- Great UI/UX: fast loading, intuitive navigation, clear checkout flow, and consistent design system (typography, spacing, and components) across all screens.
+
+## Note on Product features:
+check sample.csv for example which columns the products should have, metadata columns should be skipped, but products can contain multiple images, videos, pdfs or preview links.
+
+
+## Backend (NestJS)
+
+- Tech: NestJS + TypeScript, PostgreSQL (or MySQL) via TypeORM/Prisma, JWT auth.
+- Modules:  
+  - Auth (JWT, roles: admin, customer).  
+  - Users (profiles, addresses).  
+  - Products (CRUD, categories, variants, images, stock).  
+  - Cart (per‑user cart, guest cart via token).
+  - Orders (create, pay, status updates, history).  
+  - Payments (Stripe or similar gateway integration).
+- APIs: REST (or GraphQL) endpoints for storefront and admin; input validation, guards, and rate limiting.
+
+## Frontend (Vue.js)
+
+- Tech: Vue 3 (or Nuxt 3), Vue Router, Pinia/Vuex for state, Axios/fetch for API calls.
+- Storefront pages:  
+  - Home (hero, featured products).  
+  - Category listing (filters, sort, pagination).  
+  - Product detail (gallery, price, variants, reviews).  
+  - Cart and checkout (address, shipping, payment, confirmation).
+- Account pages:  
+  - Login/register, profile, address book.  
+  - Order history and order details.  
+- Admin SPA (can be separate Vue app): product CRUD, stock, orders list, order status updates.
+
+## UI/UX and design requirements
+
+- Layout: responsive grid and flex layouts, mobile‑first; sticky header/cart summary on critical flows.
+- Visual style: clean, minimal color palette, generous whitespace, consistent shadows and border radius for a sleek feel.  
+- Components: reusable design system for buttons, inputs, cards, modals, toasts, tables, and form layouts.
+- Performance: image optimization (WebP/AVIF), lazy loading, code splitting, skeleton loaders, and smooth transitions.
+- Accessibility: semantic HTML, proper contrast, focus states, keyboard navigation for all interactive elements.
+
+## Infrastructure
+
+- Single VPS or containerized setup: NestJS API + DB + built Vue app behind nginx/Caddy reverse proxy.
+- Environments: dev, staging, production with .env config and simple CI/CD for automated deployments.  
+
