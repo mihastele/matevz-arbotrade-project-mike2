@@ -11,14 +11,21 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0', // Expose to host for Docker
+    strictPort: true,
+    watch: {
+      usePolling: true, // Enable polling for Docker volumes
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://backend:3000',
         changeOrigin: true,
+        secure: false,
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://backend:3000',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

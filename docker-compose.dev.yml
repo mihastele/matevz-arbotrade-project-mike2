@@ -65,7 +65,7 @@ services:
     container_name: vuenest-frontend-dev
     restart: unless-stopped
     environment:
-      - VITE_API_URL=http://localhost:3000
+      - VITE_API_URL=http://backend:3000
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
