@@ -300,11 +300,48 @@ npm run lint           # Run ESLint
 
 ### Admin Setup
 
-#### Creating an Admin User
+#### Automatic Admin User Creation (Recommended)
 
-There are two methods to create an admin user:
+The application can automatically create an admin user on first startup using environment variables:
 
-**Method 1: Database Update (Recommended)**
+**1. Configure Environment Variables**
+
+Edit your `.env` file (or set in Docker):
+
+```env
+# Admin User Auto-Creation
+ADMIN_SETUP_KEY=your-secure-random-key-here
+ADMIN_EMAIL=admin@arbotrade.si
+ADMIN_PASSWORD=YourSecurePassword123!
+ADMIN_FIRST_NAME=Admin
+ADMIN_LAST_NAME=User
+```
+
+**2. Start the Application**
+
+```bash
+docker compose up -d
+```
+
+The backend will automatically:
+- Check if an admin user exists
+- If not, create one with the specified credentials
+- If user exists but isn't admin, promote them to admin role
+- Log the creation status to console
+
+**Security Notes:**
+- Change `ADMIN_SETUP_KEY` from the default value
+- Use a strong, unique password for `ADMIN_PASSWORD`
+- The setup key must be set to a custom value (not the default) for auto-creation to work
+- After first login, immediately change the password through the UI
+
+**3. Login**
+
+Navigate to http://localhost/login and use the configured admin credentials.
+
+#### Manual Admin User Creation
+
+**Method 1: Database Update**
 
 After registering a normal user account through the UI, you can promote them to admin via database:
 
