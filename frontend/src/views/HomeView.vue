@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import ProductCard from '@/components/product/ProductCard.vue'
 import { productsApi } from '@/api/products'
 import type { Product } from '@/types'
 
+const { t } = useI18n()
 const featuredProducts = ref<Product[]>([])
 const loading = ref(true)
 
@@ -27,17 +29,16 @@ onMounted(async () => {
       <div class="container-custom py-20 md:py-32">
         <div class="max-w-2xl">
           <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            Premium Products for Your Needs
+            {{ t('hero.title') }}
           </h1>
           <p class="text-lg md:text-xl text-primary-100 mb-8">
-            Discover our curated collection of high-quality products. 
-            Exceptional quality meets unbeatable prices.
+            {{ t('hero.subtitle') }}
           </p>
           <RouterLink 
             to="/products" 
             class="inline-flex items-center px-6 py-3 bg-white text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-colors"
           >
-            Shop Now
+            {{ t('hero.shopNow') }}
             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
@@ -57,8 +58,8 @@ onMounted(async () => {
               </svg>
             </div>
             <div>
-              <h3 class="font-semibold text-secondary-900">Quality Products</h3>
-              <p class="text-secondary-600 mt-1">Carefully selected items that meet our high standards</p>
+              <h3 class="font-semibold text-secondary-900">{{ t('features.quality.title') }}</h3>
+              <p class="text-secondary-600 mt-1">{{ t('features.quality.description') }}</p>
             </div>
           </div>
           
@@ -69,8 +70,8 @@ onMounted(async () => {
               </svg>
             </div>
             <div>
-              <h3 class="font-semibold text-secondary-900">Best Prices</h3>
-              <p class="text-secondary-600 mt-1">Competitive pricing on all our products</p>
+              <h3 class="font-semibold text-secondary-900">{{ t('features.prices.title') }}</h3>
+              <p class="text-secondary-600 mt-1">{{ t('features.prices.description') }}</p>
             </div>
           </div>
           
@@ -81,8 +82,8 @@ onMounted(async () => {
               </svg>
             </div>
             <div>
-              <h3 class="font-semibold text-secondary-900">Fast Shipping</h3>
-              <p class="text-secondary-600 mt-1">Quick delivery to your doorstep</p>
+              <h3 class="font-semibold text-secondary-900">{{ t('features.shipping.title') }}</h3>
+              <p class="text-secondary-600 mt-1">{{ t('features.shipping.description') }}</p>
             </div>
           </div>
         </div>
@@ -93,12 +94,12 @@ onMounted(async () => {
     <section class="py-16">
       <div class="container-custom">
         <div class="flex items-center justify-between mb-8">
-          <h2 class="text-2xl md:text-3xl font-bold text-secondary-900">Featured Products</h2>
+          <h2 class="text-2xl md:text-3xl font-bold text-secondary-900">{{ t('products.featured') }}</h2>
           <RouterLink 
             to="/products" 
             class="text-primary-600 hover:text-primary-700 font-medium flex items-center"
           >
-            View All
+            {{ t('products.viewAll') }}
             <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
@@ -125,7 +126,7 @@ onMounted(async () => {
 
         <!-- Empty State -->
         <div v-if="!loading && featuredProducts.length === 0" class="text-center py-12">
-          <p class="text-secondary-500">No featured products available</p>
+          <p class="text-secondary-500">{{ t('products.noFeatured') }}</p>
         </div>
       </div>
     </section>
@@ -133,22 +134,22 @@ onMounted(async () => {
     <!-- CTA Section -->
     <section class="py-16 bg-secondary-900 text-white">
       <div class="container-custom text-center">
-        <h2 class="text-2xl md:text-3xl font-bold mb-4">Ready to Start Shopping?</h2>
+        <h2 class="text-2xl md:text-3xl font-bold mb-4">{{ t('cta.title') }}</h2>
         <p class="text-secondary-300 mb-8 max-w-2xl mx-auto">
-          Create an account today and enjoy exclusive benefits, order tracking, and personalized recommendations.
+          {{ t('cta.description') }}
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <RouterLink 
             to="/register" 
             class="btn-primary px-8 py-3"
           >
-            Create Account
+            {{ t('cta.createAccount') }}
           </RouterLink>
           <RouterLink 
             to="/products" 
             class="btn-outline border-white text-white hover:bg-white hover:text-secondary-900 px-8 py-3"
           >
-            Browse Products
+            {{ t('cta.browseProducts') }}
           </RouterLink>
         </div>
       </div>

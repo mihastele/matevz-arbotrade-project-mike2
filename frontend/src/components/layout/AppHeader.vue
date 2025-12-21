@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
@@ -22,6 +24,10 @@ function handleLogout() {
 function closeMobileMenu() {
   mobileMenuOpen.value = false
 }
+
+function toggleLanguage() {
+  locale.value = locale.value === 'sl' ? 'en' : 'sl'
+}
 </script>
 
 <template>
@@ -30,8 +36,7 @@ function closeMobileMenu() {
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <RouterLink to="/" class="flex items-center">
-          <span class="text-xl font-bold text-primary-600">VueNest</span>
-          <span class="text-xl font-light text-secondary-600">Store</span>
+          <span class="text-xl font-bold text-primary-600">{{ t('brand.name') }}</span>
         </RouterLink>
 
         <!-- Desktop Navigation -->
@@ -40,12 +45,26 @@ function closeMobileMenu() {
             to="/products" 
             class="text-secondary-600 hover:text-primary-600 font-medium"
           >
-            Products
+            {{ t('nav.products') }}
+          </RouterLink>
+          <RouterLink 
+            to="/about" 
+            class="text-secondary-600 hover:text-primary-600 font-medium"
+          >
+            {{ t('nav.about') }}
           </RouterLink>
         </nav>
 
         <!-- Right Side -->
         <div class="flex items-center space-x-4">
+          <!-- Language Toggle -->
+          <button 
+            @click="toggleLanguage"
+            class="p-2 text-secondary-600 hover:text-primary-600 transition-colors text-sm font-medium"
+          >
+            {{ locale === 'sl' ? 'EN' : 'SL' }}
+          </button>
+
           <!-- Cart -->
           <RouterLink 
             to="/cart" 
@@ -87,14 +106,14 @@ function closeMobileMenu() {
                 @click="userMenuOpen = false"
                 class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50"
               >
-                My Account
+                {{ t('nav.myAccount') }}
               </RouterLink>
               <RouterLink 
                 to="/account/orders" 
                 @click="userMenuOpen = false"
                 class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50"
               >
-                Orders
+                {{ t('nav.orders') }}
               </RouterLink>
               <RouterLink 
                 v-if="authStore.isAdmin"
@@ -102,14 +121,14 @@ function closeMobileMenu() {
                 @click="userMenuOpen = false"
                 class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50"
               >
-                Admin Panel
+                {{ t('nav.adminPanel') }}
               </RouterLink>
               <hr class="my-2 border-secondary-100" />
               <button 
                 @click="handleLogout"
                 class="w-full text-left px-4 py-2 text-secondary-700 hover:bg-secondary-50"
               >
-                Logout
+                {{ t('nav.logout') }}
               </button>
             </div>
           </div>
@@ -120,13 +139,13 @@ function closeMobileMenu() {
               to="/login" 
               class="text-secondary-600 hover:text-primary-600 font-medium"
             >
-              Login
+              {{ t('nav.login') }}
             </RouterLink>
             <RouterLink 
               to="/register" 
               class="btn-primary btn-sm"
             >
-              Register
+              {{ t('nav.register') }}
             </RouterLink>
           </div>
 
@@ -153,7 +172,14 @@ function closeMobileMenu() {
             @click="closeMobileMenu"
             class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
           >
-            Products
+            {{ t('nav.products') }}
+          </RouterLink>
+          <RouterLink 
+            to="/about" 
+            @click="closeMobileMenu"
+            class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
+          >
+            {{ t('nav.about') }}
           </RouterLink>
           
           <template v-if="authStore.isAuthenticated">
@@ -162,14 +188,14 @@ function closeMobileMenu() {
               @click="closeMobileMenu"
               class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              My Account
+              {{ t('nav.myAccount') }}
             </RouterLink>
             <RouterLink 
               to="/account/orders" 
               @click="closeMobileMenu"
               class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              Orders
+              {{ t('nav.orders') }}
             </RouterLink>
             <RouterLink 
               v-if="authStore.isAdmin"
@@ -177,13 +203,13 @@ function closeMobileMenu() {
               @click="closeMobileMenu"
               class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              Admin Panel
+              {{ t('nav.adminPanel') }}
             </RouterLink>
             <button 
               @click="handleLogout"
               class="w-full text-left px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              Logout
+              {{ t('nav.logout') }}
             </button>
           </template>
           <template v-else>
@@ -192,14 +218,14 @@ function closeMobileMenu() {
               @click="closeMobileMenu"
               class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              Login
+              {{ t('nav.login') }}
             </RouterLink>
             <RouterLink 
               to="/register" 
               @click="closeMobileMenu"
               class="block px-4 py-2 text-secondary-700 hover:bg-secondary-50 rounded-lg"
             >
-              Register
+              {{ t('nav.register') }}
             </RouterLink>
           </template>
         </nav>
