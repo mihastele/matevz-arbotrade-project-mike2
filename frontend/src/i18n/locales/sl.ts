@@ -249,7 +249,6 @@ export default {
     search: 'Iskanje',
     filter: 'Filter',
     sort: 'Razvrsti',
-
     all: 'Vse',
     yes: 'Da',
     no: 'Ne',
