@@ -6,3 +6,4 @@ backend/dist/
 predef_in/
 sample.csv
 .env
+.idea/
