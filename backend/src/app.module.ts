@@ -10,6 +10,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { MetakockaModule } from './modules/metakocka/metakocka.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     OrdersModule,
     PaymentsModule,
     UploadsModule,
+    MetakockaModule,
   ],
 })
 export class AppModule {}
