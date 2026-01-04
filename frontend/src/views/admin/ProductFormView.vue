@@ -29,7 +29,10 @@ const form = ref({
   stock: '',
   categoryId: '',
   status: 'draft',
-  isFeatured: false
+  isFeatured: false,
+  // New fields for image handling
+  image: null as File | null,
+  images: [] as File[]
 })
 
 const errors = ref<Record<string, string>>({})
@@ -271,7 +274,7 @@ onMounted(() => {
       </div>
 
       <!-- Images -->
-      <div class="bg-white rounded-lg shadow-sm p-6">
+      <!-- <div class="bg-white rounded-lg shadow-sm p-6">
         <h2 class="text-lg font-semibold text-secondary-900 mb-4">Images</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -289,7 +292,7 @@ onMounted(() => {
             multiple
           />
         </div>
-      </div>
+      </div> -->
 
       <!-- Actions -->
       <div class="flex justify-end gap-4">
