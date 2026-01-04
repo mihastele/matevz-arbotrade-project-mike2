@@ -32,7 +32,7 @@ const form = ref({
   isFeatured: false,
   // New fields for image handling
   image: null as File | null,
-  images: [] as File[]
+  images: [] as File[] | null,
 })
 
 const errors = ref<Record<string, string>>({})
@@ -88,7 +88,9 @@ async function loadProduct() {
       stock: String(product.stock),
       categoryId: product.categoryId || '',
       status: product.status,
-      isFeatured: product.isFeatured
+      isFeatured: product.isFeatured,
+      image: null,
+      images: null,
     }
   } catch (error) {
     toast.error('Product not found')
