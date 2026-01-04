@@ -186,6 +186,7 @@ export interface Product {
   purchasing?: string;
   work?: string;
   active?: string;
+  activated?: string;
   eshop_sync?: string;
   height?: string;
   width?: string;
@@ -621,11 +622,16 @@ export interface ImportInventoryResponse extends MetakockaResponse {
 // Attachment Interfaces
 // ============================================
 
+export interface AttachmentItem {
+  file_name: string;
+  source_url?: string;
+  data_b64?: string;
+}
+
 export interface AddAttachmentRequest extends MetakockaCredentials {
   doc_type: DocumentType;
   mk_id: string;
-  file_name: string;
-  file_content_base64: string;
+  attachment_list: AttachmentItem[];
 }
 
 export interface AddAttachmentResponse extends MetakockaResponse {
@@ -637,16 +643,26 @@ export interface AddAttachmentResponse extends MetakockaResponse {
 // ============================================
 
 export interface GenerateStickerRequest extends MetakockaCredentials {
-  sales_order_mk_id?: string;
-  sales_order_count_code?: string;
+  order_id_list?: number[];
   customer_order_list?: string[];
-  delivery_service?: string;
+}
+
+export interface GenerateStickerItem {
+  opr_code: string;
+  opr_time_ms: string;
+  mk_id: string;
+  sales_order_count_code?: string;
+  sales_order_customer_order?: string;
+  sticker_public_url?: string;
+  tracking_code?: string;
+  carrier_tracking_code?: string;
+  error_desc?: string;
 }
 
 export interface GenerateStickerResponse extends MetakockaResponse {
-  sticker_code: string;
-  sticker_content_base64?: string;
-  tracking_code?: string;
+  generate_sticker: GenerateStickerItem[];
+  generate_sticker_join_document?: string;
+  measure_time?: string;
 }
 
 // ============================================
@@ -658,7 +674,9 @@ export interface ChangeDocumentStatusRequest extends MetakockaCredentials {
   mk_id?: string;
   mk_id_list?: string[];
   count_code?: string;
+  buyer_order?: string;
   new_status: string;
+  api_user_email?: string;
 }
 
 export interface ChangeDocumentStatusResponse extends MetakockaResponse {

@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import ProductCard from '@/components/product/ProductCard.vue'
 import { productsApi } from '@/api/products'
 import type { Product } from '@/types'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const featuredProducts = ref<Product[]>([])
@@ -139,12 +140,14 @@ onMounted(async () => {
           {{ t('cta.description') }}
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <RouterLink 
-            to="/register" 
-            class="btn-primary px-8 py-3"
-          >
-            {{ t('cta.createAccount') }}
-          </RouterLink>
+          <div v-if="!useAuthStore().isAuthenticated">
+            <RouterLink 
+              to="/register" 
+              class="btn-primary px-8 py-3"
+            >
+              {{ t('cta.createAccount') }}
+            </RouterLink>
+          </div>
           <RouterLink 
             to="/products" 
             class="btn-outline border-white text-white hover:bg-white hover:text-secondary-900 px-8 py-3"

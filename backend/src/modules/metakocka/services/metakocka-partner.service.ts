@@ -165,11 +165,16 @@ export class MetakockaPartnerService {
   /**
    * Update an existing partner
    * 
-   * @param partner - Partner data with mk_id
+   * @param partner - Partner data with mk_id or count_code
    * @returns Response
+   * 
+   * Note: For updating, you can use partner_contact_list and partner_delivery_address_list
+   * arrays to add/update multiple contacts and addresses. Each item should have mk_id to
+   * update existing records, or omit mk_id to create new ones.
    */
   async updatePartner(partner: {
-    mk_id: string;
+    mk_id?: string;
+    count_code?: string;
     business_entity?: string;
     taxpayer?: string;
     buyer?: string;
@@ -183,8 +188,9 @@ export class MetakockaPartnerService {
     place?: string;
     province?: string;
     country?: string;
-    partner_contact?: {
+    partner_contact_list?: Array<{
       mk_id?: string;
+      mk_address_id?: string;
       useCustomerAsContact?: string;
       contact?: string;
       name?: string;
@@ -192,11 +198,11 @@ export class MetakockaPartnerService {
       gsm?: string;
       phone?: string;
       fax?: string;
-    };
-    partner_delivery_address?: PartnerDeliveryAddress & { mk_id?: string };
+    }>;
+    partner_delivery_address_list?: Array<PartnerDeliveryAddress & { mk_id?: string }>;
   }): Promise<MetakockaResponse> {
-    if (!partner.mk_id) {
-      throw new BadRequestException('Partner mk_id is required for update');
+    if (!partner.mk_id && !partner.count_code) {
+      throw new BadRequestException('Partner mk_id or count_code is required for update');
     }
 
     return this.metakockaService.post('update_partner', { partner });

@@ -446,7 +446,7 @@ export class MetakockaDocumentService {
   /**
    * Change document status
    * 
-   * @param docType - Document type
+   * @param docType - Document type (sales_order, warehouse_receiving_note)
    * @param options - Status change options
    * @returns Response
    */
@@ -456,13 +456,23 @@ export class MetakockaDocumentService {
       mk_id?: string;
       mk_id_list?: string[];
       count_code?: string;
+      buyer_order?: string;
       new_status: string;
+      api_user_email?: string;
     },
   ): Promise<ChangeDocumentStatusResponse> {
-    return this.metakockaService.post<ChangeDocumentStatusResponse>('change_document_status', {
+    const payload: Record<string, any> = {
       doc_type: docType,
-      ...options,
-    });
+      status_code: options.new_status,
+    };
+
+    if (options.mk_id) payload.mk_id = options.mk_id;
+    if (options.mk_id_list) payload.mk_id_list = options.mk_id_list;
+    if (options.count_code) payload.count_code = options.count_code;
+    if (options.buyer_order) payload.buyer_order = options.buyer_order;
+    if (options.api_user_email) payload.api_user_email = options.api_user_email;
+
+    return this.metakockaService.post<ChangeDocumentStatusResponse>('change_document_status', payload);
   }
 
   // ============================================
@@ -470,25 +480,22 @@ export class MetakockaDocumentService {
   // ============================================
 
   /**
-   * Add attachment to a document
+   * Add attachment(s) to a document
    * 
    * @param docType - Document type
    * @param mkId - Document mk_id
-   * @param fileName - File name
-   * @param fileContentBase64 - Base64 encoded file content
-   * @returns Response with attachment ID
+   * @param attachments - Array of attachments with file_name and source_url or data_b64
+   * @returns Response
    */
   async addAttachment(
     docType: DocumentType,
     mkId: string,
-    fileName: string,
-    fileContentBase64: string,
+    attachments: { file_name: string; source_url?: string; data_b64?: string }[],
   ): Promise<AddAttachmentResponse> {
     return this.metakockaService.post<AddAttachmentResponse>('add_attachment', {
       doc_type: docType,
       mk_id: mkId,
-      file_name: fileName,
-      file_content_base64: fileContentBase64,
+      attachment_list: attachments,
     });
   }
 
@@ -501,15 +508,21 @@ export class MetakockaDocumentService {
    * 
    * @param options - Payment options
    * @returns Response
+   * 
+   * Note: doc_type can be: bill, sales_offer, sales_order, sales_bill_domestic, 
+   * sales_bill_foreign, sales_bill_retail, purchase_bill_domestic, purchase_bill_foreign
    */
   async addPayment(options: {
-    doc_type: DocumentType;
+    doc_type: DocumentType | 'bill';
     mk_id?: string;
     count_code?: string;
     buyer_order?: string;
+    payment_mode?: 'payment' | 'prepayment' | 'return';
     payment_type: string;
-    payment_date: string;
-    amount: string;
+    cash_register?: string;
+    date: string;
+    price: string;
+    notes?: string;
   }): Promise<MetakockaResponse> {
     return this.metakockaService.post<MetakockaResponse>('put_transaction', options);
   }

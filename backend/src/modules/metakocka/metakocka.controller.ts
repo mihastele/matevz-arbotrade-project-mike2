@@ -493,19 +493,26 @@ export class MetakockaController {
 
   @Get('complaints/:mkId')
   @ApiOperation({ summary: 'Get a complaint by ID' })
-  @ApiParam({ name: 'mkId', description: 'Complaint MK ID' })
+  @ApiParam({ name: 'mkId', description: 'Complaint MK ID (doc_id)' })
   async getComplaint(@Param('mkId') mkId: string) {
-    return this.reportService.getComplaint(mkId);
+    return this.reportService.getComplaint({ doc_id: mkId });
   }
 
   @Put('complaints/:mkId')
   @ApiOperation({ summary: 'Update a complaint' })
-  @ApiParam({ name: 'mkId', description: 'Complaint MK ID' })
+  @ApiParam({ name: 'mkId', description: 'Complaint MK ID (claim_id)' })
   async updateComplaint(
     @Param('mkId') mkId: string,
-    @Body() updateDto: { claim_status?: string; claim_reason?: string; claim_description?: string },
+    @Body() updateDto: { 
+      claim_type: 'reclamation' | 'return' | 'replacement'; 
+      claim_status: string; 
+      claim_note?: string;
+    },
   ) {
-    return this.reportService.updateComplaint(mkId, updateDto);
+    return this.reportService.updateComplaint(mkId, updateDto.claim_type, {
+      claim_status: updateDto.claim_status,
+      claim_note: updateDto.claim_note,
+    });
   }
 
   // ============================================
@@ -515,14 +522,20 @@ export class MetakockaController {
   @Get('bank/statements')
   @ApiOperation({ summary: 'Get bank statements' })
   async getBankStatements(
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
-    @Query('bankAccountId') bankAccountId?: string,
+    @Query('docDate') docDate?: string,
+    @Query('docDateFrom') docDateFrom?: string,
+    @Query('docDateTo') docDateTo?: string,
+    @Query('docId') docId?: string,
+    @Query('offset') offset?: number,
+    @Query('limit') limit?: number,
   ) {
     return this.reportService.getBankStatements({
-      date_from: dateFrom,
-      date_to: dateTo,
-      bank_account_id: bankAccountId,
+      doc_date: docDate,
+      doc_date_from: docDateFrom,
+      doc_date_to: docDateTo,
+      doc_id: docId,
+      offset,
+      limit,
     });
   }
 
@@ -535,16 +548,20 @@ export class MetakockaController {
   @Get('cash-register/journal')
   @ApiOperation({ summary: 'Get cash register journal' })
   async getCashRegisterJournal(
-    @Query('cashRegisterId') cashRegisterId?: string,
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query('docDate') docDate?: string,
+    @Query('docDateFrom') docDateFrom?: string,
+    @Query('docDateTo') docDateTo?: string,
+    @Query('docId') docId?: string,
+    @Query('cashRegister') cashRegister?: string,
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
     return this.reportService.getCashRegisterJournal({
-      cash_register_id: cashRegisterId,
-      date_from: dateFrom,
-      date_to: dateTo,
+      doc_date: docDate,
+      doc_date_from: docDateFrom,
+      doc_date_to: docDateTo,
+      doc_id: docId,
+      cash_register: cashRegister,
       offset,
       limit,
     });
@@ -588,18 +605,24 @@ export class MetakockaController {
     mk_id?: string;
     count_code?: string;
     buyer_order?: string;
+    payment_mode?: 'payment' | 'prepayment' | 'return';
     payment_type: string;
-    payment_date: string;
-    amount: string;
+    cash_register?: string;
+    date: string;
+    price: string;
+    notes?: string;
   }) {
     return this.documentService.addPayment({
-      doc_type: paymentDto.doc_type as DocumentType,
+      doc_type: paymentDto.doc_type as DocumentType | 'bill',
       mk_id: paymentDto.mk_id,
       count_code: paymentDto.count_code,
       buyer_order: paymentDto.buyer_order,
+      payment_mode: paymentDto.payment_mode,
       payment_type: paymentDto.payment_type,
-      payment_date: paymentDto.payment_date,
-      amount: paymentDto.amount,
+      cash_register: paymentDto.cash_register,
+      date: paymentDto.date,
+      price: paymentDto.price,
+      notes: paymentDto.notes,
     });
   }
 
@@ -609,19 +632,21 @@ export class MetakockaController {
 
   @Post('attachments')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add attachment to document' })
-  @ApiResponse({ status: 201, description: 'Attachment added successfully' })
+  @ApiOperation({ summary: 'Add attachment(s) to document' })
+  @ApiResponse({ status: 201, description: 'Attachment(s) added successfully' })
   async addAttachment(@Body() attachmentDto: {
     doc_type: string;
     mk_id: string;
-    file_name: string;
-    file_content_base64: string;
+    attachment_list: Array<{
+      file_name: string;
+      source_url?: string;
+      data_b64?: string;
+    }>;
   }) {
     return this.documentService.addAttachment(
       attachmentDto.doc_type as DocumentType,
       attachmentDto.mk_id,
-      attachmentDto.file_name,
-      attachmentDto.file_content_base64,
+      attachmentDto.attachment_list,
     );
   }
 }

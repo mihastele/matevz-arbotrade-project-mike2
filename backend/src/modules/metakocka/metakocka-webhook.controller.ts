@@ -193,23 +193,25 @@ export class MetakockaWebhookController {
   }
 
   /**
-   * Verify HMAC-SHA256 signature
+   * Verify HMAC-SHA1 signature as per MetaKocka documentation
+   * MetaKocka signs with HmacSHA1 and then Base64 encodes the result
    */
   private verifySignature(rawBody: Buffer | undefined, receivedSignature: string): boolean {
     if (!rawBody || !receivedSignature) {
       return false;
     }
 
-    const secretKey = this.configService.get<string>('METAKOCKA_SECRET_KEY');
-    if (!secretKey) {
-      this.logger.error('METAKOCKA_SECRET_KEY not configured');
+    const clientSecret = this.configService.get<string>('METAKOCKA_WEBHOOK_SECRET');
+    if (!clientSecret) {
+      this.logger.error('METAKOCKA_WEBHOOK_SECRET not configured');
       return false;
     }
 
+    // MetaKocka uses HmacSHA1 with Base64 encoding as per documentation
     const expectedSignature = crypto
-      .createHmac('sha256', secretKey)
+      .createHmac('sha1', clientSecret)
       .update(rawBody)
-      .digest('hex');
+      .digest('base64');
 
     // Use timing-safe comparison to prevent timing attacks
     try {

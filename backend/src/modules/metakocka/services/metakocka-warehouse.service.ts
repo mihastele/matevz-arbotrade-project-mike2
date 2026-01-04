@@ -209,50 +209,57 @@ export class MetakockaWarehouseService {
   /**
    * Get warehouse mapping rules for orders
    * 
-   * @returns Warehouse mapping rules
+   * @returns Warehouse mapping rules (change_list)
    */
-  async getOrderChangeWarehouse(): Promise<MetakockaResponse & { rules: any[] }> {
+  async getOrderChangeWarehouse(): Promise<MetakockaResponse & { change_list: any[] }> {
     return this.metakockaService.post('get_order_change_warehouse', {});
   }
 
   /**
    * Replace warehouse mapping rules for orders
    * 
-   * @param rules - New warehouse mapping rules
+   * Warning: This replaces ALL rules. It is not possible to insert/update/delete specific rules.
+   * We recommend to first read all rules with getOrderChangeWarehouse and then replace them.
+   * 
+   * @param changeList - New warehouse mapping rules
    * @returns Response
    */
-  async replaceOrderChangeWarehouse(rules: {
-    webshop_id?: string;
-    delivery_type?: string;
-    country?: string;
-    warehouse_mark: string;
+  async replaceOrderChangeWarehouse(changeList: {
+    from_status_list?: string;
+    from_warehouse_mark_list?: string;
+    from_delivery_type_list?: string;
+    product_code_list?: string;
+    to_warehouse_mark?: string;
+    to_delivery_type?: string;
   }[]): Promise<MetakockaResponse> {
-    return this.metakockaService.post('replace_order_change_warehouse', { rules });
+    return this.metakockaService.post('replace_order_change_warehouse', { change_list: changeList });
   }
 
   /**
    * Get forbidden products rules for orders
    * 
-   * @returns Forbidden products rules
+   * @returns Forbidden products rules (change_list)
    */
-  async getOrderForbiddenProducts(): Promise<MetakockaResponse & { rules: any[] }> {
+  async getOrderForbiddenProducts(): Promise<MetakockaResponse & { change_list: any[] }> {
     return this.metakockaService.post('get_order_forbidden_products', {});
   }
 
   /**
    * Replace forbidden products rules for orders
    * 
-   * @param rules - New forbidden products rules
+   * Warning: This replaces ALL rules. It is not possible to insert/update/delete specific rules.
+   * We recommend to first read all rules with getOrderForbiddenProducts and then replace them.
+   * 
+   * @param changeList - New forbidden products rules
    * @returns Response
    */
-  async replaceOrderForbiddenProducts(rules: {
-    webshop_id?: string;
-    country?: string;
-    product_mk_id?: string;
-    product_code?: string;
-    category?: string;
+  async replaceOrderForbiddenProducts(changeList: {
+    forbidden_country_list?: string;
+    forbidden_status_list?: string;
+    product_code_list?: string;
+    to_status?: string;
   }[]): Promise<MetakockaResponse> {
-    return this.metakockaService.post('replace_order_forbidden_products', { rules });
+    return this.metakockaService.post('replace_order_forbidden_products', { change_list: changeList });
   }
 
   /**

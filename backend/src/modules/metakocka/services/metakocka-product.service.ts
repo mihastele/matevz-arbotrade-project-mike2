@@ -200,7 +200,7 @@ export class MetakockaProductService {
     categories?: ProductCategory[];
     pricelist?: ProductPricelist[];
     product_partner_info?: ProductPartnerInfo[];
-    attachment_list?: { file_name: string; file_content_base64: string }[];
+    attachment_list?: { file_name: string; source_url?: string; data_b64?: string }[];
     remove_not_send_attachments?: string;
   }): Promise<ProductAddResponse> {
     return this.metakockaService.post<ProductAddResponse>('json/product_add', product);
@@ -223,6 +223,7 @@ export class MetakockaProductService {
     service?: string;
     sales?: string;
     purchasing?: string;
+    activated?: string;
     height?: string;
     width?: string;
     depth?: string;
@@ -234,12 +235,15 @@ export class MetakockaProductService {
     categories?: ProductCategory[];
     pricelist?: ProductPricelist[];
     product_partner_info?: ProductPartnerInfo[];
-    attachment_list?: { file_name: string; file_content_base64: string }[];
+    attachment_list?: { file_name: string; source_url?: string; data_b64?: string }[];
     remove_not_send_attachments?: string;
     // Compound/norm support
     compound_type?: 'compound' | 'norm';
     compounds?: ProductCompound[];
     compounds_delete?: boolean;
+    // Confirm service change
+    confirm_save_change_product_service?: string;
+    complete_set?: string;
   }): Promise<ProductAddResponse> {
     if (!product.mk_id && !product.count_code) {
       throw new BadRequestException('Either mk_id or count_code is required for update');
@@ -302,15 +306,22 @@ export class MetakockaProductService {
   }
 
   /**
-   * Delete partner-specific product code
+   * Delete partner-specific product code(s)
    * 
-   * @param mkId - Partner code mk_id
+   * @param productMkId - Product mk_id
+   * @param partnerCodeMkIds - Array of product partner code mk_ids to delete
    * @returns Response
    */
-  async deleteProductPartnerCode(mkId: string): Promise<MetakockaResponse> {
+  async deleteProductPartnerCode(
+    productMkId: string, 
+    partnerCodeMkIds: string[]
+  ): Promise<MetakockaResponse> {
     return this.metakockaService.post<MetakockaResponse>(
       'delete_product_partner_code',
-      { mk_id: mkId },
+      { 
+        mk_id: productMkId,
+        product_partner_info: partnerCodeMkIds.map(id => ({ mk_id: id })),
+      },
     );
   }
 }

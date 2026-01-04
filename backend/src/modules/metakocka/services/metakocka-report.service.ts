@@ -147,26 +147,42 @@ export class MetakockaReportService {
   // ============================================
 
   /**
-   * Send an email or SMS message
+   * Send SMS message(s)
+   * 
+   * @param messages - Array of SMS messages
+   * @returns Send message response with status per message
+   * 
+   * @example
+   * await reportService.sendSmsMessages([{
+   *   eshop_sync_id: '1600374782',
+   *   to_number: '041 111 222',
+   *   message: 'Your order has been shipped.',
+   *   sender_message_id: 'sms1',
+   * }]);
+   */
+  async sendSmsMessages(messages: {
+    eshop_sync_id: string;
+    to_number: string;
+    message: string;
+    sender_message_id?: string;
+    abandoned_cart_id?: string;
+  }[]): Promise<SendMessageResponse> {
+    const messageList = messages.map(msg => ({
+      type: 'sms' as const,
+      ...msg,
+    }));
+    return this.metakockaService.post<SendMessageResponse>('send_message', {
+      message_list: messageList,
+    });
+  }
+
+  /**
+   * Send an email or SMS message (simplified method)
    * 
    * @param options - Message options
    * @returns Send message response
    * 
-   * @example
-   * // Send email
-   * await reportService.sendMessage({
-   *   message_type: 'email',
-   *   recipient: 'customer@example.com',
-   *   subject: 'Your Order',
-   *   message: 'Your order has been shipped.',
-   * });
-   * 
-   * // Send SMS
-   * await reportService.sendMessage({
-   *   message_type: 'sms',
-   *   recipient: '+38640123456',
-   *   message: 'Your order has been shipped.',
-   * });
+   * @deprecated Use sendSmsMessages for SMS. For emails, use sendDocumentEmail.
    */
   async sendMessage(options: {
     message_type: 'email' | 'sms';
@@ -213,19 +229,20 @@ export class MetakockaReportService {
    * Generate shipping sticker/label
    * 
    * @param options - Sticker options
-   * @returns Sticker response with tracking code
+   * @returns Sticker response with tracking codes and URLs
    * 
    * @example
    * const sticker = await reportService.generateSticker({
-   *   sales_order_mk_id: '1600203487',
-   *   delivery_service: 'DHL',
+   *   order_id_list: [1600370797, 1600370778],
+   * });
+   * // Or use customer order codes:
+   * const sticker2 = await reportService.generateSticker({
+   *   customer_order_list: ['PP-27578', 'PP-27579'],
    * });
    */
   async generateSticker(options: {
-    sales_order_mk_id?: string;
-    sales_order_count_code?: string;
+    order_id_list?: number[];
     customer_order_list?: string[];
-    delivery_service?: string;
   }): Promise<GenerateStickerResponse> {
     return this.metakockaService.post<GenerateStickerResponse>('generate_sticker', options);
   }
@@ -235,12 +252,19 @@ export class MetakockaReportService {
    * 
    * @param options - Shipping options
    * @returns Response
+   * 
+   * @example
+   * await reportService.markOrdersAsShipped({
+   *   sales_order_id_list: ['400000001642', '400000001643'],
+   * });
+   * // Or by customer order codes:
+   * await reportService.markOrdersAsShipped({
+   *   customer_order_list: ['CustomerOrder1', 'CustomerOrder2'],
+   * });
    */
   async markOrdersAsShipped(options: {
-    sales_order_mk_id_list?: string[];
+    sales_order_id_list?: string[];
     customer_order_list?: string[];
-    tracking_code?: string;
-    shipped_date?: string;
   }): Promise<MetakockaResponse> {
     return this.metakockaService.post<MetakockaResponse>('mark_orders_as_shipped', options);
   }
@@ -250,44 +274,55 @@ export class MetakockaReportService {
   // ============================================
 
   /**
-   * Create a complaint
+   * Create a complaint (reclamation, return, or replacement)
    * 
    * @param options - Complaint options
-   * @returns Complaint response
+   * @returns Complaint response with mk_id
    */
   async createComplaint(options: {
-    sales_order_mk_id?: string;
+    api_user_email: string;
+    claim_type: 'reclamation' | 'return' | 'replacement';
+    sales_order_customer_order?: string;
+    sales_order_tracking_code?: string;
     sales_order_count_code?: string;
-    partner: {
-      business_entity: string;
-      taxpayer?: string;
-      foreign_county?: string;
-      customer: string;
-      street: string;
-      post_number: string;
-      place: string;
-      country: string;
+    datetime?: string;
+    partner?: {
       iban?: string;
+      swift?: string;
       bank_name?: string;
-      partner_contact?: {
-        name?: string;
-        email?: string;
-        gsm?: string;
-        phone?: string;
-      };
+      bank_street?: string;
+      bank_place?: string;
+      bank_country_code?: string;
+      partner_id?: string;
+      partner_address_id?: string;
+      post_number?: string;
+      place?: string;
     };
-    product_list: {
-      product_mk_id: string;
-      product_code?: string;
+    complaint_products: {
+      code?: string;
+      count_code?: string;
+      mk_id?: string;
       amount: string;
-      price?: string;
-      reason?: string;
-      description?: string;
+      price_with_tax?: string;
+      tax?: string;
+      discount?: string;
+      complaint_reason?: string;
+      complaint_description?: string;
+    }[];
+    replacement_products?: {
+      code?: string;
+      count_code?: string;
+      mk_id?: string;
+      amount: string;
+      price_with_tax: string;
+      tax?: string;
+      discount?: string;
     }[];
     claim_status?: string;
     claim_reason?: string;
     claim_description?: string;
     return_tracking_code?: string;
+    attachment_list?: { file_name: string; source_url?: string; data_b64?: string }[];
   }): Promise<ComplaintResponse> {
     return this.metakockaService.post<ComplaintResponse>('create_complaint', options);
   }
@@ -295,20 +330,28 @@ export class MetakockaReportService {
   /**
    * Update a complaint
    * 
-   * @param mkId - Complaint mk_id
+   * @param claimId - Complaint claim_id (mk_id)
+   * @param claimType - Type of complaint: reclamation, return, or replacement
    * @param options - Update options
    * @returns Response
+   * 
+   * @example
+   * await reportService.updateComplaint('1600608202', 'reclamation', {
+   *   claim_status: 'completed',
+   *   claim_note: 'Issue resolved',
+   * });
    */
   async updateComplaint(
-    mkId: string,
+    claimId: string,
+    claimType: 'reclamation' | 'return' | 'replacement',
     options: {
-      claim_status?: string;
-      claim_reason?: string;
-      claim_description?: string;
+      claim_status: string;
+      claim_note?: string;
     },
   ): Promise<MetakockaResponse> {
     return this.metakockaService.post<MetakockaResponse>('update_complaint', {
-      mk_id: mkId,
+      claim_id: claimId,
+      claim_type: claimType,
       ...options,
     });
   }
@@ -316,11 +359,18 @@ export class MetakockaReportService {
   /**
    * Get a complaint by ID
    * 
-   * @param mkId - Complaint mk_id
+   * @param docId - Complaint doc_id (mk_id)
+   * @param docCountCode - Alternative: complaint count code
    * @returns Complaint details
    */
-  async getComplaint(mkId: string): Promise<MetakockaResponse & { complaint: any }> {
-    return this.metakockaService.post('get_complaint', { mk_id: mkId });
+  async getComplaint(options: {
+    doc_id?: string;
+    doc_count_code?: string;
+  }): Promise<MetakockaResponse & { complaint: any }> {
+    return this.metakockaService.post('get_document', { 
+      doc_type: 'complaint',
+      ...options,
+    });
   }
 
   // ============================================
@@ -331,22 +381,25 @@ export class MetakockaReportService {
    * Get bank statements
    * 
    * @param options - Query options
-   * @returns Bank statement response
+   * @returns Bank statement response with result array
    */
   async getBankStatements(options: {
-    date_from?: string;
-    date_to?: string;
-    bank_account_id?: string;
-  } = {}): Promise<MetakockaResponse & { bank_statement_list: any[] }> {
+    doc_date?: string;
+    doc_date_from?: string;
+    doc_date_to?: string;
+    doc_id?: string;
+    offset?: number;
+    limit?: number;
+  } = {}): Promise<MetakockaResponse & { result: any[]; result_count: string; offset: string; limit: string }> {
     return this.metakockaService.post('get_bank_statement', options);
   }
 
   /**
-   * Get bank statement status
+   * Get bank statement status - last statement state for all bank accounts
    * 
-   * @returns Bank statement status for all bank accounts
+   * @returns Bank statement status showing last statement date and finished state
    */
-  async getBankStatementStatus(): Promise<MetakockaResponse & { bank_account_list: any[] }> {
+  async getBankStatementStatus(): Promise<MetakockaResponse & { statement_list: any[] }> {
     return this.metakockaService.post('get_bank_statement_status', {});
   }
 
@@ -354,37 +407,41 @@ export class MetakockaReportService {
    * Get bank compensations
    * 
    * @param options - Query options
-   * @returns Bank compensation response
+   * @returns Bank compensation response with result array
    */
   async getBankCompensations(options: {
-    date_from?: string;
-    date_to?: string;
-  } = {}): Promise<MetakockaResponse & { compensation_list: any[] }> {
+    doc_date?: string;
+    doc_date_from?: string;
+    doc_date_to?: string;
+    doc_id?: string;
+    offset?: number;
+    limit?: number;
+  } = {}): Promise<MetakockaResponse & { result: any[]; result_count: string }> {
     return this.metakockaService.post('get_bank_compensation', options);
   }
 
   /**
-   * Search cash register journal
+   * Get cash register journal
    * 
    * @param options - Query options
    * @returns Cash register journal response
    */
   async getCashRegisterJournal(options: {
-    cash_register_id?: string;
-    date_from?: string;
-    date_to?: string;
+    doc_date?: string;
+    doc_date_from?: string;
+    doc_date_to?: string;
+    doc_id?: string;
+    cash_register?: string;
     offset?: number;
     limit?: number;
-  } = {}): Promise<MetakockaResponse & { journal_list: any[] }> {
-    const payload: Record<string, any> = {};
-
-    if (options.cash_register_id) payload.cash_register_id = options.cash_register_id;
-    if (options.date_from) payload.date_from = options.date_from;
-    if (options.date_to) payload.date_to = options.date_to;
-    if (options.offset !== undefined) payload.offset = options.offset.toString();
-    if (options.limit !== undefined) payload.limit = options.limit.toString();
-
-    return this.metakockaService.post('cash_register_journal', payload);
+  } = {}): Promise<MetakockaResponse & { 
+    cash_register_journal_list: any[]; 
+    cash_register_journal_count: string;
+    doc_id?: string;
+    limit: string;
+    offset: string;
+  }> {
+    return this.metakockaService.post('cash_register_journal', options);
   }
 
   // ============================================

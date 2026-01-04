@@ -244,6 +244,12 @@ export class ProductListQueryDto {
   @IsBoolean()
   active?: boolean;
 
+  @ApiPropertyOptional({ description: 'Filter by work flag' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  work?: boolean;
+
   @ApiPropertyOptional({ description: 'Filter by e-shop sync flag' })
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)
@@ -261,6 +267,24 @@ export class ProductListQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   return_free_amount?: boolean;
+
+  @ApiPropertyOptional({ description: 'Include warehouse reservation details' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  return_warehouse_reservation?: boolean;
+
+  @ApiPropertyOptional({ description: 'Include product partner info' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  return_product_partner_info?: boolean;
+
+  @ApiPropertyOptional({ description: 'Include expected order delivery date' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  return_expect_order_delivery_date?: boolean;
 
   @ApiPropertyOptional({ description: 'Include pricelist data' })
   @IsOptional()
@@ -285,6 +309,12 @@ export class ProductListQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   return_web_shop_link?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show tax factor in pricelist' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_tax_factor?: boolean;
 
   @ApiPropertyOptional({ description: 'Filter by category name' })
   @IsOptional()
@@ -394,11 +424,23 @@ export class UpdateProductDto extends CreateProductDto {
   @IsOptional()
   @IsString()
   mk_id?: string;
+
+  @ApiPropertyOptional({ description: 'Is product activated' })
+  @IsOptional()
+  @IsString()
+  activated?: string;
 }
 
 // ============================================
 // Sales Order DTOs
 // ============================================
+
+export class OfferListItemDto {
+  @ApiProperty({ description: 'Offer count code' })
+  @IsString()
+  @IsNotEmpty()
+  count_code: string;
+}
 
 export class CreateSalesOrderDto {
   @ApiPropertyOptional({ description: 'Document count code' })
@@ -432,6 +474,13 @@ export class CreateSalesOrderDto {
   @ValidateNested({ each: true })
   @Type(() => DocumentProductDto)
   product_list: DocumentProductDto[];
+
+  @ApiPropertyOptional({ type: [OfferListItemDto], description: 'Linked offers' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferListItemDto)
+  offer_list?: OfferListItemDto[];
 
   @ApiPropertyOptional({ description: 'Sales pricelist code' })
   @IsOptional()
@@ -527,6 +576,36 @@ export class CreateSalesOrderDto {
   @IsOptional()
   @IsString()
   doc_created_email?: string;
+
+  @ApiPropertyOptional({ description: 'Commercialist email' })
+  @IsOptional()
+  @IsString()
+  commercialist_email?: string;
+
+  @ApiPropertyOptional({ description: 'Incoterms (delivery terms)' })
+  @IsOptional()
+  @IsString()
+  pariteta?: string;
+
+  @ApiPropertyOptional({ description: 'Finish date (YYYY-MM-DD+HH:MM)' })
+  @IsOptional()
+  @IsString()
+  finish_date?: string;
+
+  @ApiPropertyOptional({ description: 'Order creation timestamp (ISO 8601)' })
+  @IsOptional()
+  @IsString()
+  order_create_ts?: string;
+
+  @ApiPropertyOptional({ description: 'Link to web store' })
+  @IsOptional()
+  @IsString()
+  link_to_web_store?: string;
+
+  @ApiPropertyOptional({ description: 'Webshop eshop sync ID' })
+  @IsOptional()
+  @IsString()
+  webshop_eshop_sync_id?: string;
 
   @ApiPropertyOptional({ type: [MarkPaidDto], description: 'Payment information' })
   @IsOptional()
@@ -628,6 +707,42 @@ export class SearchDocumentsDto {
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   order_direction?: 'asc' | 'desc';
+
+  @ApiPropertyOptional({ description: 'Show product details' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_product_detail?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show tax factor' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_tax_factor?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show delivery service events' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_delivery_service_events?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show sticker list' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_sticker_list?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show tracking URL' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_tracking_url?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show status code' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  show_status_code?: boolean;
 }
 
 // ============================================
@@ -655,6 +770,18 @@ export class WarehouseStockQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   eshop_sync?: boolean;
+
+  @ApiPropertyOptional({ description: 'Include expected order delivery dates' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  return_expect_order_delivery_date?: boolean;
+
+  @ApiPropertyOptional({ description: 'Return products currently out of stock with reservations' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  return_reservation_without_amount?: boolean;
 
   @ApiPropertyOptional({ description: 'Offset for pagination', default: 0 })
   @IsOptional()
