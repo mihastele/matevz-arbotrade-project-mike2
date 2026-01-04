@@ -270,6 +270,27 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Images -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-secondary-900 mb-4">Images</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <BaseInput
+            v-model="form.image"
+            label="Image"
+            type="file"
+            accept="image/*"
+          />
+          <BaseInput
+            v-model="form.images"
+            label="Images"
+            type="file"
+            accept="image/*"
+            multiple
+          />
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex justify-end gap-4">
         <BaseButton type="button" variant="outline" @click="router.push('/admin/products')">
