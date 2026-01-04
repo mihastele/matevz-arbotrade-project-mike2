@@ -7,7 +7,9 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import { productsApi } from '@/api/products'
 import { categoriesApi } from '@/api/categories'
 import { useToast } from '@/composables/useToast'
-import type { Product, Category } from '@/types'
+import ImageUploader from '@/components/admin/ImageUploader.vue'
+import ProductImageGrid from '@/components/admin/ProductImageGrid.vue'
+import type { Product, Category, ProductImage } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,10 +32,10 @@ const form = ref({
   categoryId: '',
   status: 'draft',
   isFeatured: false,
-  // New fields for image handling
-  image: null as File | null,
-  images: [] as File[] | null,
+  images: [] as ProductImage[],
 })
+
+const uploadedImages = ref<ProductImage[]>([])
 
 const errors = ref<Record<string, string>>({})
 
@@ -89,9 +91,9 @@ async function loadProduct() {
       categoryId: product.categoryId || '',
       status: product.status,
       isFeatured: product.isFeatured,
-      image: null,
-      images: null,
+      images: product.images || [],
     }
+    uploadedImages.value = [...(product.images || [])]
   } catch (error) {
     toast.error('Product not found')
     router.push('/admin/products')
@@ -111,6 +113,32 @@ function validate(): boolean {
   return Object.keys(errors.value).length === 0
 }
 
+function handleImagesUploaded(urls: string[]) {
+  const newImages: ProductImage[] = urls.map((url, index) => ({
+    id: `new-${Date.now()}-${index}`,
+    url,
+    type: 'image',
+    sortOrder: uploadedImages.value.length + index,
+    isPrimary: uploadedImages.value.length === 0 && index === 0
+  }))
+  uploadedImages.value = [...uploadedImages.value, ...newImages]
+}
+
+function removeImage(id: string) {
+  uploadedImages.value = uploadedImages.value.filter(img => img.id !== id)
+  // If we removed the primary image, set the first remaining one as primary
+  if (uploadedImages.value.length > 0 && !uploadedImages.value.find(img => img.isPrimary)) {
+    uploadedImages.value[0].isPrimary = true
+  }
+}
+
+function setPrimaryImage(id: string) {
+  uploadedImages.value = uploadedImages.value.map(img => ({
+    ...img,
+    isPrimary: img.id === id
+  }))
+}
+
 async function handleSubmit() {
   if (!validate()) return
   
@@ -127,7 +155,14 @@ async function handleSubmit() {
       stock: Number(form.value.stock),
       categoryId: form.value.categoryId || undefined,
       status: form.value.status as 'draft' | 'published' | 'archived',
-      isFeatured: form.value.isFeatured
+      isFeatured: form.value.isFeatured,
+      images: uploadedImages.value.map((img, index) => ({
+        url: img.url,
+        alt: img.alt,
+        type: img.type,
+        sortOrder: index,
+        isPrimary: img.isPrimary
+      }))
     }
     
     if (isEdit.value) {
@@ -276,25 +311,27 @@ onMounted(() => {
       </div>
 
       <!-- Images -->
-      <!-- <div class="bg-white rounded-lg shadow-sm p-6">
-        <h2 class="text-lg font-semibold text-secondary-900 mb-4">Images</h2>
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-secondary-900">Product Images</h2>
+          <span class="text-sm text-secondary-500">{{ uploadedImages.length }} image(s)</span>
+        </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BaseInput
-            v-model="form.image"
-            label="Image"
-            type="file"
-            accept="image/*"
+        <div class="space-y-6">
+          <ProductImageGrid 
+            v-if="uploadedImages.length > 0"
+            :images="uploadedImages"
+            @remove="removeImage"
+            @set-primary="setPrimaryImage"
           />
-          <BaseInput
-            v-model="form.images"
-            label="Images"
-            type="file"
-            accept="image/*"
+
+          <ImageUploader 
             multiple
+            @uploaded="handleImagesUploaded"
+            @error="toast.error"
           />
         </div>
-      </div> -->
+      </div>
 
       <!-- Actions -->
       <div class="flex justify-end gap-4">
