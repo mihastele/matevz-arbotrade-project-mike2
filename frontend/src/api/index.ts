@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -14,13 +14,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // Add guest token for cart
     const guestToken = localStorage.getItem('guestToken')
     if (guestToken) {
       config.headers['x-guest-token'] = guestToken
     }
-    
+
     return config
   },
   (error) => {
