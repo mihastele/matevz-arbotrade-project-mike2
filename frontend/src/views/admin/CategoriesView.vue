@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { categoriesApi } from '@/api/categories'
@@ -9,6 +9,7 @@ import type { Category } from '@/types'
 const toast = useToast()
 
 const categories = ref<Category[]>([])
+const categoryTree = ref<Category[]>([])
 const loading = ref(true)
 const showForm = ref(false)
 const editingId = ref<string | null>(null)
@@ -16,7 +17,40 @@ const editingId = ref<string | null>(null)
 const form = ref({
   name: '',
   slug: '',
-  description: ''
+  description: '',
+  parentId: null as string | null
+})
+
+// Flatten tree for dropdown options (excluding current category when editing)
+const parentOptions = computed(() => {
+  const flatten = (cats: Category[], depth = 0): { id: string; name: string; depth: number }[] => {
+    const result: { id: string; name: string; depth: number }[] = []
+    for (const cat of cats) {
+      // Exclude current category and its children when editing
+      if (editingId.value && cat.id === editingId.value) continue
+      result.push({ id: cat.id, name: cat.name, depth })
+      if (cat.children?.length) {
+        result.push(...flatten(cat.children, depth + 1))
+      }
+    }
+    return result
+  }
+  return flatten(categoryTree.value)
+})
+
+// Flatten tree for display with depth info
+const flatCategories = computed(() => {
+  const flatten = (cats: Category[], depth = 0): (Category & { depth: number })[] => {
+    const result: (Category & { depth: number })[] = []
+    for (const cat of cats) {
+      result.push({ ...cat, depth })
+      if (cat.children?.length) {
+        result.push(...flatten(cat.children, depth + 1))
+      }
+    }
+    return result
+  }
+  return flatten(categoryTree.value)
 })
 
 function generateSlug(name: string): string {
@@ -35,8 +69,12 @@ function handleNameChange() {
 async function loadCategories() {
   loading.value = true
   try {
-    const response = await categoriesApi.getAll()
-    categories.value = response
+    const [allCategories, tree] = await Promise.all([
+      categoriesApi.getAll(),
+      categoriesApi.getTree()
+    ])
+    categories.value = allCategories
+    categoryTree.value = tree
   } catch (error) {
     toast.error('Failed to load categories')
   } finally {
@@ -50,11 +88,12 @@ function openForm(category?: Category) {
     form.value = {
       name: category.name,
       slug: category.slug,
-      description: category.description || ''
+      description: category.description || '',
+      parentId: category.parentId || null
     }
   } else {
     editingId.value = null
-    form.value = { name: '', slug: '', description: '' }
+    form.value = { name: '', slug: '', description: '', parentId: null }
   }
   showForm.value = true
 }
@@ -62,7 +101,7 @@ function openForm(category?: Category) {
 function closeForm() {
   showForm.value = false
   editingId.value = null
-  form.value = { name: '', slug: '', description: '' }
+  form.value = { name: '', slug: '', description: '', parentId: null }
 }
 
 async function saveCategory() {
@@ -72,11 +111,18 @@ async function saveCategory() {
   }
 
   try {
+    const payload = {
+      name: form.value.name,
+      slug: form.value.slug,
+      description: form.value.description || undefined,
+      parentId: form.value.parentId || undefined
+    }
+
     if (editingId.value) {
-      await categoriesApi.update(editingId.value, form.value)
+      await categoriesApi.update(editingId.value, payload)
       toast.success('Category updated')
     } else {
-      await categoriesApi.create(form.value)
+      await categoriesApi.create(payload)
       toast.success('Category created')
     }
     closeForm()
@@ -92,11 +138,26 @@ async function deleteCategory(id: string) {
 
   try {
     await categoriesApi.delete(id)
-    categories.value = categories.value.filter(c => c.id !== id)
     toast.success('Category deleted')
+    loadCategories()
   } catch (error) {
     toast.error('Failed to delete category')
   }
+}
+
+function getParentName(parentId: string | undefined): string {
+  if (!parentId) return ''
+  const findParent = (cats: Category[]): string => {
+    for (const cat of cats) {
+      if (cat.id === parentId) return cat.name
+      if (cat.children?.length) {
+        const found = findParent(cat.children)
+        if (found) return found
+      }
+    }
+    return ''
+  }
+  return findParent(categoryTree.value)
 }
 
 onMounted(loadCategories)
@@ -133,6 +194,25 @@ onMounted(loadCategories)
             label="Slug"
             required
           />
+          
+          <!-- Parent Category Dropdown -->
+          <div>
+            <label class="block text-sm font-medium text-secondary-700 mb-1">Parent Category</label>
+            <select
+              v-model="form.parentId"
+              class="w-full px-4 py-2.5 rounded-lg border border-secondary-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              <option :value="null">— None (Top Level) —</option>
+              <option 
+                v-for="option in parentOptions" 
+                :key="option.id" 
+                :value="option.id"
+              >
+                {{ '—'.repeat(option.depth) }} {{ option.name }}
+              </option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-secondary-700 mb-1">Description</label>
             <textarea
@@ -170,6 +250,9 @@ onMounted(loadCategories)
               Name
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+              Parent
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
               Slug
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
@@ -181,26 +264,34 @@ onMounted(loadCategories)
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-secondary-200">
-          <tr v-if="categories.length === 0">
-            <td colspan="4" class="px-6 py-12 text-center text-secondary-500">
+          <tr v-if="flatCategories.length === 0">
+            <td colspan="5" class="px-6 py-12 text-center text-secondary-500">
               No categories found
             </td>
           </tr>
-          <tr v-for="category in categories" :key="category.id" class="hover:bg-secondary-50">
+          <tr v-for="category in flatCategories" :key="category.id" class="hover:bg-secondary-50">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
-                <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
-                  <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p class="font-medium text-secondary-900">{{ category.name }}</p>
-                  <p v-if="category.description" class="text-sm text-secondary-500 truncate max-w-xs">
-                    {{ category.description }}
-                  </p>
+                <div 
+                  class="flex items-center"
+                  :style="{ paddingLeft: `${category.depth * 24}px` }"
+                >
+                  <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="font-medium text-secondary-900">{{ category.name }}</p>
+                    <p v-if="category.description" class="text-sm text-secondary-500 truncate max-w-xs">
+                      {{ category.description }}
+                    </p>
+                  </div>
                 </div>
               </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
+              {{ getParentName(category.parentId) || '—' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
               {{ category.slug }}
