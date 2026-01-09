@@ -157,6 +157,7 @@ async function handleSubmit() {
       status: form.value.status as 'draft' | 'published' | 'archived',
       isFeatured: form.value.isFeatured,
       images: uploadedImages.value.map((img, index) => ({
+        id: img.id,
         url: img.url,
         alt: img.alt,
         type: img.type,
