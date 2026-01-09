@@ -45,7 +45,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly importExportService: ImportExportService,
-  ) {}
+  ) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -154,10 +154,10 @@ export class ProductsController {
     try {
       const csvContent = fs.readFileSync(file.path, 'utf-8');
       const result = await this.importExportService.importFromCSV(csvContent);
-      
+
       // Clean up temp file
       fs.unlinkSync(file.path);
-      
+
       return result;
     } catch (error) {
       // Clean up temp file on error
@@ -208,12 +208,12 @@ export class ProductsController {
     try {
       // Ensure extract directory exists
       fs.mkdirSync(extractPath, { recursive: true });
-      
+
       const result = await this.importExportService.importFromZIP(file.path, extractPath);
-      
+
       // Clean up temp file
       fs.unlinkSync(file.path);
-      
+
       return result;
     } catch (error) {
       // Clean up temp files on error
@@ -227,6 +227,70 @@ export class ProductsController {
     }
   }
 
+  // CSV V2 Import endpoint (new format with 3-level categories)
+  @Post('import/csv-v2')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Import products from CSV V2 format with lazy image downloading (admin only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, PODKATEGORIJA, PODPODKATEGORIJA, KRATEK OPIS, DOLGI OPIS, CENA, SLIKE, URL',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: importStorage,
+      fileFilter: (req, file, callback) => {
+        if (!file.originalname.match(/\.(csv)$/i)) {
+          callback(new BadRequestException('Only CSV files are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+    }),
+  )
+  async importCSVv2(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      const csvContent = fs.readFileSync(file.path, 'utf-8');
+      const result = await this.importExportService.importFromCSVv2(csvContent);
+
+      // Clean up temp file
+      fs.unlinkSync(file.path);
+
+      return result;
+    } catch (error) {
+      // Clean up temp file on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
+  }
+
+  // Get image download queue status
+  @Get('import/image-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get image download queue status (admin only)' })
+  getImageDownloadStatus() {
+    return this.importExportService.getImageDownloadStatus();
+  }
+
+
   @Get('export/csv')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -238,7 +302,7 @@ export class ProductsController {
     @Query('categoryIds') categoryIds?: string | string[],
   ) {
     const options = {
-      categoryIds: categoryIds 
+      categoryIds: categoryIds
         ? (Array.isArray(categoryIds) ? categoryIds : [categoryIds])
         : undefined,
     };

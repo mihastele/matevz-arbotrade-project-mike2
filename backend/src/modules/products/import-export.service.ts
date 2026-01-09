@@ -54,6 +54,37 @@ export interface ExportOptions {
   categoryIds?: string[];
 }
 
+// CSV V2 column mapping for new import format (v0.1.csv)
+interface CsvRowV2 {
+  SKU: string;
+  BRAND: string;
+  'IME PRODUKTA': string;
+  KATEGORIJA: string;
+  PODKATEGORIJA: string;
+  PODPODKATEGORIJA: string;
+  'KRATEK OPIS': string;
+  'DOLGI OPIS': string;
+  CENA: string;
+  SLIKE: string;
+  URL: string;
+  [key: string]: string | undefined;
+}
+
+// Image download queue item
+interface ImageDownloadTask {
+  productId: string;
+  imageUrls: string[];
+}
+
+// V2 Import result with pending images tracking
+export interface ImportResultV2 {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; error: string; name?: string }>;
+  pendingImages: number;
+  message?: string;
+}
+
 @Injectable()
 export class ImportExportService {
   private readonly logger = new Logger(ImportExportService.name);
@@ -66,7 +97,7 @@ export class ImportExportService {
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   // Parse CSV content to array of objects
   private parseCSV(content: string): CsvRow[] {
@@ -85,16 +116,16 @@ export class ImportExportService {
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // Handle multi-line quoted fields
       for (const char of line) {
         if (char === '"') {
           inQuote = !inQuote;
         }
       }
-      
+
       currentLine += (currentLine ? '\n' : '') + line;
-      
+
       if (!inQuote) {
         if (currentLine.trim()) {
           const values = this.parseCSVLine(currentLine);
@@ -260,7 +291,7 @@ export class ImportExportService {
   // Parse video URLs from oembed metadata columns
   private parseVideoUrls(row: CsvRow): string[] {
     const videos: string[] = [];
-    
+
     // Look for oembed columns that contain video embeds (YouTube, Vimeo, etc.)
     for (const [key, value] of Object.entries(row)) {
       if (key.startsWith('Meta: _oembed_') && value && !key.includes('time')) {
@@ -364,8 +395,8 @@ export class ImportExportService {
       height: this.parsePrice(row['Višina (cm)']) || undefined,
       stock: this.parseStock(row.Zaloga),
       lowStockThreshold: this.parseStock(row['Nizka zaloga']),
-      allowBackorder: row['Dovoljena naročila brez zaloge?'] === 'notify' || 
-                      this.parseBoolean(row['Dovoljena naročila brez zaloge?']),
+      allowBackorder: row['Dovoljena naročila brez zaloge?'] === 'notify' ||
+        this.parseBoolean(row['Dovoljena naročila brez zaloge?']),
       status: this.parseBoolean(row.Objavljeno) ? ProductStatus.PUBLISHED : ProductStatus.DRAFT,
       isFeatured: this.parseBoolean(row['Je izpostavljen?']),
       categoryId: category?.id || undefined,
@@ -482,7 +513,7 @@ export class ImportExportService {
     }
 
     // Convert to CSV string
-    return rows.map(row => 
+    return rows.map(row =>
       row.map(cell => {
         // Escape quotes and wrap in quotes if contains comma, quote, or newline
         const escaped = String(cell).replace(/"/g, '""');
@@ -530,7 +561,7 @@ export class ImportExportService {
     // Build image map from images/ folder
     const imageMap = new Map<string, string>();
     const imagesPath = path.join(extractPath, 'images');
-    
+
     if (fs.existsSync(imagesPath)) {
       const imageFiles = fs.readdirSync(imagesPath);
       for (const file of imageFiles) {
@@ -538,7 +569,7 @@ export class ImportExportService {
         const srcPath = path.join(imagesPath, file);
         const destFilename = `${Date.now()}-${file}`;
         const destPath = path.join('./uploads', destFilename);
-        
+
         fs.copyFileSync(srcPath, destPath);
         imageMap.set(file, `/uploads/${destFilename}`);
       }
@@ -554,4 +585,378 @@ export class ImportExportService {
 
     return result;
   }
+
+  // ============================================
+  // CSV V2 Import (New format with 3-level categories)
+  // ============================================
+
+  // Image download queue for lazy loading
+  private imageDownloadQueue: ImageDownloadTask[] = [];
+  private isProcessingImages = false;
+  private readonly IMAGE_DOWNLOAD_DELAY_MS = 500;
+
+  // Category cache to avoid duplicate queries
+  private categoryCache = new Map<string, Category>();
+
+  // Parse CSV V2 content to array of objects
+  private parseCSVv2(content: string): CsvRowV2[] {
+    const lines = content.split('\n');
+    if (lines.length < 2) {
+      throw new BadRequestException('CSV file is empty or has no data rows');
+    }
+
+    // Parse header - handle quoted fields
+    const headerLine = lines[0];
+    const headers = this.parseCSVLine(headerLine);
+
+    const rows: CsvRowV2[] = [];
+    let currentLine = '';
+    let inQuote = false;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Handle multi-line quoted fields
+      for (const char of line) {
+        if (char === '"') {
+          inQuote = !inQuote;
+        }
+      }
+
+      currentLine += (currentLine ? '\n' : '') + line;
+
+      if (!inQuote) {
+        if (currentLine.trim()) {
+          const values = this.parseCSVLine(currentLine);
+          const row: CsvRowV2 = {} as CsvRowV2;
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          rows.push(row);
+        }
+        currentLine = '';
+      }
+    }
+
+    return rows;
+  }
+
+  // Find or create category with caching for V2 format
+  private async findOrCreateCategoryV2(
+    categoryName: string | undefined,
+    subcategoryName: string | undefined,
+    subsubcategoryName: string | undefined,
+  ): Promise<Category | null> {
+    // Build the hierarchy parts
+    const parts = [categoryName, subcategoryName, subsubcategoryName]
+      .filter((p) => p && p.trim() !== '')
+      .map((p) => p!.trim());
+
+    if (parts.length === 0) return null;
+
+    // Create a cache key for this full path
+    const cacheKey = parts.join(' > ');
+    if (this.categoryCache.has(cacheKey)) {
+      return this.categoryCache.get(cacheKey)!;
+    }
+
+    let parent: Category | null = null;
+    let category: Category | null = null;
+    let currentPath = '';
+
+    for (const name of parts) {
+      currentPath += (currentPath ? ' > ' : '') + name;
+
+      // Check cache first
+      if (this.categoryCache.has(currentPath)) {
+        category = this.categoryCache.get(currentPath)!;
+        parent = category;
+        continue;
+      }
+
+      // Look for existing category with this name and parent
+      const whereClause: Record<string, unknown> = { name };
+      if (parent?.id) {
+        whereClause.parentId = parent.id;
+      } else {
+        whereClause.parentId = null;
+      }
+
+      category = await this.categoriesRepository.findOne({
+        where: whereClause as any,
+      });
+
+      if (!category) {
+        // Check if slug already exists and make unique
+        let slug = this.generateSlug(name);
+        const existingSlug = await this.categoriesRepository.findOne({
+          where: { slug },
+        });
+        if (existingSlug) {
+          slug = `${slug}-${Date.now()}`;
+        }
+
+        // Create the category
+        const categoryData: Partial<Category> = {
+          name,
+          slug,
+          isActive: true,
+        };
+        if (parent && parent.id) {
+          categoryData.parentId = parent.id;
+        }
+        const newCategory = this.categoriesRepository.create(categoryData);
+        category = await this.categoriesRepository.save(newCategory);
+        this.logger.log(`Created category: ${currentPath}`);
+      }
+
+      // Cache the category
+      this.categoryCache.set(currentPath, category);
+      parent = category;
+    }
+
+    return category;
+  }
+
+  // Parse image URLs from V2 format (comma-separated, may have extra spaces)
+  private parseImageUrlsV2(imagesStr: string | undefined): string[] {
+    if (!imagesStr) return [];
+
+    return imagesStr
+      .split(',')
+      .map((url) => url.trim())
+      .filter((url) => url && url.startsWith('http'));
+  }
+
+  // Import products from CSV V2 format
+  async importFromCSVv2(csvContent: string): Promise<ImportResultV2> {
+    const rows = this.parseCSVv2(csvContent);
+    const result: ImportResultV2 = {
+      success: 0,
+      failed: 0,
+      errors: [],
+      pendingImages: 0,
+    };
+
+    this.logger.log(`Starting V2 import of ${rows.length} products`);
+
+    // Clear category cache for fresh import
+    this.categoryCache.clear();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2; // Account for header row and 0-index
+
+      try {
+        const productId = await this.importProductV2(row);
+
+        // Queue images for lazy download if present
+        const imageUrls = this.parseImageUrlsV2(row.SLIKE);
+        if (imageUrls.length > 0) {
+          this.imageDownloadQueue.push({ productId, imageUrls });
+          result.pendingImages += imageUrls.length;
+        }
+
+        result.success++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push({
+          row: rowNumber,
+          error: error.message,
+          name: row['IME PRODUKTA'],
+        });
+        this.logger.warn(`Failed to import row ${rowNumber}: ${error.message}`);
+      }
+    }
+
+    this.logger.log(
+      `V2 Import completed: ${result.success} success, ${result.failed} failed, ${result.pendingImages} images queued`,
+    );
+
+    // Start async image download process
+    if (this.imageDownloadQueue.length > 0) {
+      this.processImageDownloadQueue();
+      result.message = `Products imported. ${result.pendingImages} images are being downloaded in the background.`;
+    }
+
+    return result;
+  }
+
+  // Import a single product from CSV V2 row
+  private async importProductV2(row: CsvRowV2): Promise<string> {
+    const name = row['IME PRODUKTA'];
+    if (!name || name.trim() === '') {
+      throw new Error('Product name (IME PRODUKTA) is required');
+    }
+
+    const price = this.parsePrice(row.CENA);
+    if (price === null) {
+      throw new Error('Valid price (CENA) is required');
+    }
+
+    // Check if product already exists by SKU
+    let existingProduct: Product | null = null;
+    if (row.SKU && row.SKU.trim()) {
+      existingProduct = await this.productsRepository.findOne({
+        where: { sku: row.SKU.trim() },
+        relations: ['images'],
+      });
+    }
+
+    // Find or create category hierarchy
+    const category = await this.findOrCreateCategoryV2(
+      row.KATEGORIJA,
+      row.PODKATEGORIJA,
+      row.PODPODKATEGORIJA,
+    );
+
+    // Generate unique slug
+    let slug = this.generateSlug(name);
+    if (!existingProduct) {
+      const existingSlug = await this.productsRepository.findOne({
+        where: { slug },
+      });
+      if (existingSlug) {
+        slug = `${slug}-${Date.now()}`;
+      }
+    }
+
+    const productData: Partial<Product> = {
+      name: name.trim(),
+      slug: existingProduct?.slug || slug,
+      sku: row.SKU?.trim() || undefined,
+      brand: row.BRAND?.trim() || undefined,
+      shortDescription: row['KRATEK OPIS']?.trim() || undefined,
+      description: row['DOLGI OPIS']?.trim() || undefined,
+      price,
+      stock: 0, // Default stock to 0, can be updated separately
+      status: ProductStatus.PUBLISHED, // Publish by default in V2 import
+      categoryId: category?.id || undefined,
+    };
+
+    let product: Product;
+
+    if (existingProduct) {
+      // Update existing product
+      Object.assign(existingProduct, productData);
+      product = await this.productsRepository.save(existingProduct);
+      this.logger.debug(`Updated product: ${name} (SKU: ${row.SKU})`);
+    } else {
+      // Create new product
+      product = this.productsRepository.create(productData);
+      product = await this.productsRepository.save(product);
+      this.logger.debug(`Created product: ${name} (SKU: ${row.SKU})`);
+    }
+
+    return product.id;
+  }
+
+  // Process image download queue with rate limiting
+  private async processImageDownloadQueue(): Promise<void> {
+    if (this.isProcessingImages) {
+      return; // Already processing
+    }
+
+    this.isProcessingImages = true;
+    this.logger.log(
+      `Starting image download queue processing: ${this.imageDownloadQueue.length} products`,
+    );
+
+    while (this.imageDownloadQueue.length > 0) {
+      const task = this.imageDownloadQueue.shift()!;
+
+      for (let i = 0; i < task.imageUrls.length; i++) {
+        const imageUrl = task.imageUrls[i];
+
+        try {
+          // Download image
+          const localPath = await this.downloadImage(imageUrl);
+
+          if (localPath) {
+            // Create ProductImage record
+            const productImage = this.imagesRepository.create({
+              url: localPath,
+              type: MediaType.IMAGE,
+              productId: task.productId,
+              sortOrder: i,
+              isPrimary: i === 0,
+            });
+            await this.imagesRepository.save(productImage);
+            this.logger.debug(`Downloaded image for product ${task.productId}: ${localPath}`);
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to download image ${imageUrl} for product ${task.productId}: ${error.message}`,
+          );
+        }
+
+        // Rate limiting delay between downloads
+        await this.delay(this.IMAGE_DOWNLOAD_DELAY_MS);
+      }
+    }
+
+    this.isProcessingImages = false;
+    this.logger.log('Image download queue processing completed');
+  }
+
+  // Download a single image and save to uploads folder
+  private async downloadImage(imageUrl: string): Promise<string | null> {
+    try {
+      // Use native fetch (Node 18+) or fallback
+      const response = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.startsWith('image/')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      // Determine file extension
+      let extension = '.jpg';
+      if (contentType.includes('png')) extension = '.png';
+      else if (contentType.includes('gif')) extension = '.gif';
+      else if (contentType.includes('webp')) extension = '.webp';
+      else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = '.jpg';
+
+      // Generate unique filename
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}${extension}`;
+      const uploadsDir = './uploads';
+      const filePath = path.join(uploadsDir, filename);
+
+      // Ensure uploads directory exists
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Save image to disk
+      const arrayBuffer = await response.arrayBuffer();
+      fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+
+      return `/uploads/${filename}`;
+    } catch (error) {
+      this.logger.warn(`Image download failed for ${imageUrl}: ${error.message}`);
+      return null;
+    }
+  }
+
+  // Helper delay function
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Get image download queue status
+  getImageDownloadStatus(): { queueLength: number; isProcessing: boolean } {
+    return {
+      queueLength: this.imageDownloadQueue.length,
+      isProcessing: this.isProcessingImages,
+    };
+  }
 }
+

@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { productsApi } from '@/api/products'
-import type { ImportResult } from '@/api/products'
+import type { ImportResult, ImportResultV2 } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import type { Product } from '@/types'
 
@@ -17,9 +17,9 @@ const search = ref('')
 // Import/Export state
 const showImportModal = ref(false)
 const importFile = ref<File | null>(null)
-const importType = ref<'csv' | 'zip'>('csv')
+const importType = ref<'csv' | 'csv-v2' | 'zip'>('csv-v2')
 const importing = ref(false)
-const importResult = ref<ImportResult | null>(null)
+const importResult = ref<ImportResult | ImportResultV2 | null>(null)
 const exporting = ref(false)
 
 function formatPrice(price: number): string {
@@ -100,6 +100,8 @@ async function handleImport() {
   try {
     if (importType.value === 'zip') {
       importResult.value = await productsApi.importZIP(importFile.value)
+    } else if (importType.value === 'csv-v2') {
+      importResult.value = await productsApi.importCSVv2(importFile.value)
     } else {
       importResult.value = await productsApi.importCSV(importFile.value)
     }
@@ -326,10 +328,14 @@ onMounted(loadProducts)
             <!-- File type selection -->
             <div>
               <label class="block text-sm font-medium text-secondary-700 mb-2">Import Type</label>
-              <div class="flex gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="flex items-center">
+                  <input type="radio" v-model="importType" value="csv-v2" class="mr-2" />
+                  <span>CSV V2 (New Format)</span>
+                </label>
                 <label class="flex items-center">
                   <input type="radio" v-model="importType" value="csv" class="mr-2" />
-                  <span>CSV File</span>
+                  <span>CSV (WooCommerce)</span>
                 </label>
                 <label class="flex items-center">
                   <input type="radio" v-model="importType" value="zip" class="mr-2" />
@@ -350,7 +356,9 @@ onMounted(loadProducts)
               <p class="text-xs text-secondary-500 mt-1">
                 {{ importType === 'zip' 
                   ? 'ZIP file should contain products.csv and an images/ folder' 
-                  : 'CSV file in WooCommerce export format' 
+                  : importType === 'csv-v2'
+                    ? 'CSV with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, PODKATEGORIJA, PODPODKATEGORIJA, KRATEK OPIS, DOLGI OPIS, CENA, SLIKE, URL. Images are downloaded in background.'
+                    : 'CSV file in WooCommerce export format' 
                 }}
               </p>
             </div>

@@ -7,6 +7,11 @@ export interface ImportResult {
   errors: Array<{ row: number; error: string; name?: string }>
 }
 
+export interface ImportResultV2 extends ImportResult {
+  pendingImages: number
+  message?: string
+}
+
 export const productsApi = {
   getAll: async (query?: ProductsQuery): Promise<PaginatedResponse<Product>> => {
     const { data } = await api.get<PaginatedResponse<Product>>('/products', { params: query })
@@ -57,6 +62,16 @@ export const productsApi = {
     const formData = new FormData()
     formData.append('file', file)
     const { data } = await api.post<ImportResult>('/products/import/csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+
+  // CSV V2 import with lazy image downloading
+  importCSVv2: async (file: File): Promise<ImportResultV2> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post<ImportResultV2>('/products/import/csv-v2', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
