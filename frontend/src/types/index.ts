@@ -46,7 +46,7 @@ export interface AuthResponse {
 
 // Product types
 export interface ProductImage {
-  id: string
+  id?: string
   url: string
   alt?: string
   type: 'image' | 'video' | 'pdf'
