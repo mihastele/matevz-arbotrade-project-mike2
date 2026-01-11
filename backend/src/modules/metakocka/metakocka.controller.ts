@@ -22,8 +22,8 @@ import { MetakockaSearchService } from './services/metakocka-search.service';
 import { MetakockaReportService } from './services/metakocka-report.service';
 import {
   ProductListQueryDto,
-  CreateProductDto,
-  UpdateProductDto,
+  CreateMetakockaProductDto,
+  UpdateMetakockaProductDto,
   CreateSalesOrderDto,
   UpdateSalesOrderDto,
   SearchDocumentsDto,
@@ -57,7 +57,7 @@ export class MetakockaController {
     private readonly warehouseService: MetakockaWarehouseService,
     private readonly searchService: MetakockaSearchService,
     private readonly reportService: MetakockaReportService,
-  ) {}
+  ) { }
 
   // ============================================
   // Connection Test
@@ -104,7 +104,7 @@ export class MetakockaController {
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid request' })
-  async createProduct(@Body() createProductDto: CreateProductDto) {
+  async createProduct(@Body() createProductDto: CreateMetakockaProductDto) {
     return this.productService.addProduct(createProductDto);
   }
 
@@ -112,7 +112,7 @@ export class MetakockaController {
   @ApiOperation({ summary: 'Update an existing product' })
   @ApiResponse({ status: 200, description: 'Product updated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid request' })
-  async updateProduct(@Body() updateProductDto: UpdateProductDto) {
+  async updateProduct(@Body() updateProductDto: UpdateMetakockaProductDto) {
     return this.productService.updateProduct(updateProductDto);
   }
 
@@ -180,10 +180,10 @@ export class MetakockaController {
     @Body() createBillDto: any, // Similar to CreateSalesOrderDto but for bills
     @Query('type') type?: string,
   ) {
-    const docType = type === 'foreign' 
-      ? 'sales_bill_foreign' 
-      : type === 'retail' 
-        ? 'sales_bill_retail' 
+    const docType = type === 'foreign'
+      ? 'sales_bill_foreign'
+      : type === 'retail'
+        ? 'sales_bill_retail'
         : type === 'credit_note'
           ? 'sales_bill_credit_note'
           : 'sales_bill_domestic';
@@ -214,10 +214,10 @@ export class MetakockaController {
   @Post('warehouse-docs')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a warehouse document' })
-  @ApiQuery({ 
-    name: 'type', 
-    required: true, 
-    enum: ['delivery_note', 'packing_list', 'receiving_note', 'acceptance_note'] 
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    enum: ['delivery_note', 'packing_list', 'receiving_note', 'acceptance_note']
   })
   @ApiResponse({ status: 201, description: 'Warehouse document created successfully' })
   async createWarehouseDocument(
@@ -231,10 +231,10 @@ export class MetakockaController {
   @Get('warehouse-docs/:mkId')
   @ApiOperation({ summary: 'Get a warehouse document by ID' })
   @ApiParam({ name: 'mkId', description: 'Document MK ID' })
-  @ApiQuery({ 
-    name: 'type', 
-    required: true, 
-    enum: ['delivery_note', 'packing_list', 'receiving_note', 'acceptance_note'] 
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    enum: ['delivery_note', 'packing_list', 'receiving_note', 'acceptance_note']
   })
   async getWarehouseDocument(
     @Param('mkId') mkId: string,
@@ -503,9 +503,9 @@ export class MetakockaController {
   @ApiParam({ name: 'mkId', description: 'Complaint MK ID (claim_id)' })
   async updateComplaint(
     @Param('mkId') mkId: string,
-    @Body() updateDto: { 
-      claim_type: 'reclamation' | 'return' | 'replacement'; 
-      claim_status: string; 
+    @Body() updateDto: {
+      claim_type: 'reclamation' | 'return' | 'replacement';
+      claim_status: string;
       claim_note?: string;
     },
   ) {

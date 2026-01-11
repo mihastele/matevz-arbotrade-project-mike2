@@ -1,10 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { 
-  IsString, 
-  IsOptional, 
-  IsBoolean, 
-  IsNumber, 
-  IsArray, 
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  IsArray,
   ValidateNested,
   IsEnum,
   IsNotEmpty,
@@ -337,7 +337,7 @@ export class ProductListQueryDto {
   limit?: number;
 }
 
-export class CreateProductDto {
+export class CreateMetakockaProductDto {
   @ApiPropertyOptional({ description: 'Product count code (auto-generated if empty)' })
   @IsOptional()
   @IsString()
@@ -419,7 +419,7 @@ export class CreateProductDto {
   minimal_order_quantity?: string;
 }
 
-export class UpdateProductDto extends CreateProductDto {
+export class UpdateMetakockaProductDto extends CreateMetakockaProductDto {
   @ApiPropertyOptional({ description: 'MetaKocka ID (required if count_code not provided)' })
   @IsOptional()
   @IsString()
@@ -649,13 +649,13 @@ export class SearchQueryAdvanceDto {
 }
 
 export class SearchDocumentsDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Document type',
     enum: [
       'sales_order', 'sales_offer', 'sales_bill_domestic', 'sales_bill_foreign',
       'sales_bill_retail', 'sales_bill_prepaid', 'sales_bill_credit_note',
       'purchase_order', 'purchase_bill_domestic', 'purchase_bill_foreign',
-      'warehouse_delivery_note', 'warehouse_packing_list', 
+      'warehouse_delivery_note', 'warehouse_packing_list',
       'warehouse_receiving_note', 'warehouse_acceptance_note',
       'workorder', 'transfer_order',
     ],
@@ -691,7 +691,7 @@ export class SearchDocumentsDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Result type',
     enum: ['id', 'doc'],
     default: 'doc',
@@ -700,7 +700,7 @@ export class SearchDocumentsDto {
   @IsEnum(['id', 'doc'])
   result_type?: 'id' | 'doc';
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Order direction',
     enum: ['asc', 'desc'],
   })
