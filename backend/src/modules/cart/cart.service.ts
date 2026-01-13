@@ -16,7 +16,7 @@ export class CartService {
     @InjectRepository(CartItem)
     private cartItemsRepository: Repository<CartItem>,
     private productsService: ProductsService,
-  ) {}
+  ) { }
 
   async getOrCreateCart(userId?: string, guestToken?: string): Promise<Cart> {
     let cart: Cart | null = null;
@@ -54,13 +54,19 @@ export class CartService {
     const cart = await this.getOrCreateCart(userId, guestToken);
     const product = await this.productsService.findOne(addToCartDto.productId);
 
-    if (!product.inStock && !product.allowBackorder) {
-      throw new BadRequestException('Product is out of stock');
+    // Check if product is orderable (has price and is in stock)
+    if (!product.isOrderable) {
+      if (product.price === null || product.price === undefined) {
+        throw new BadRequestException('Product cannot be ordered - price not available');
+      }
+      if (!product.inStock && !product.allowBackorder) {
+        throw new BadRequestException('Product is out of stock');
+      }
     }
 
     // Check if item already exists
     let cartItem = cart.items?.find(
-      (item) => 
+      (item) =>
         item.productId === addToCartDto.productId &&
         item.variantId === addToCartDto.variantId
     );
@@ -68,7 +74,7 @@ export class CartService {
     if (cartItem) {
       cartItem.quantity += addToCartDto.quantity;
     } else {
-      const price = product.currentPrice;
+      const price = product.currentPrice!; // Safe to use ! since we checked isOrderable above
       cartItem = this.cartItemsRepository.create({
         cartId: cart.id,
         productId: addToCartDto.productId,
@@ -82,7 +88,7 @@ export class CartService {
 
     await this.cartItemsRepository.save(cartItem);
     await this.updateCartSubtotal(cart.id);
-    
+
     return this.getCart(userId, guestToken);
   }
 
@@ -120,7 +126,7 @@ export class CartService {
 
     await this.cartItemsRepository.remove(item);
     await this.updateCartSubtotal(cart.id);
-    
+
     return this.getCart(userId, guestToken);
   }
 

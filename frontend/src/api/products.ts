@@ -75,9 +75,10 @@ export const productsApi = {
   },
 
   // CSV V2 import with lazy image downloading
-  importCSVv2: async (file: File): Promise<ImportResultV2> => {
+  importCSVv2: async (file: File, overrideExisting: boolean = true): Promise<ImportResultV2> => {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('overrideExisting', String(overrideExisting))
     const { data } = await api.post<ImportResultV2>('/products/import/csv-v2', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -95,9 +96,10 @@ export const productsApi = {
 
   // Skyman ZIP import with local images matching by SKU
   // ZIP should contain: slovene.csv, skyman.csv, and images/ folder
-  importSkymanZIP: async (file: File): Promise<ImportResultV3> => {
+  importSkymanZIP: async (file: File, overrideExisting: boolean = true): Promise<ImportResultV3> => {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('overrideExisting', String(overrideExisting))
     const { data } = await api.post<ImportResultV3>('/products/import/skyman-zip', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })

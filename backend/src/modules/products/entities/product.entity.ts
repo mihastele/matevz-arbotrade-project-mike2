@@ -44,8 +44,8 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  price: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  price: number | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   salePrice: number;
@@ -140,7 +140,10 @@ export class Product {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  get currentPrice(): number {
+  get currentPrice(): number | null {
+    if (this.price === null || this.price === undefined) {
+      return null;
+    }
     const now = new Date();
     if (
       this.salePrice &&
@@ -155,5 +158,9 @@ export class Product {
   get inStock(): boolean {
     if (!this.trackInventory) return true;
     return this.stock > 0 || this.allowBackorder;
+  }
+
+  get isOrderable(): boolean {
+    return this.price !== null && this.price !== undefined && this.inStock;
   }
 }

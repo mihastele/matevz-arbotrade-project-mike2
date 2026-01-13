@@ -522,7 +522,7 @@ export class ImportExportService {
         product.width?.toString() || '',
         product.height?.toString() || '',
         product.salePrice?.toString().replace('.', ',') || '',
-        product.price.toString().replace('.', ','),
+        product.price?.toString().replace('.', ',') || '',
         categoryPath,
         images,
         product.brand || '',
@@ -747,7 +747,7 @@ export class ImportExportService {
   }
 
   // Import products from CSV V2 format
-  async importFromCSVv2(csvContent: string): Promise<ImportResultV2> {
+  async importFromCSVv2(csvContent: string, overrideExisting: boolean = true): Promise<ImportResultV2> {
     const rows = this.parseCSVv2(csvContent);
     const result: ImportResultV2 = {
       success: 0,
@@ -756,7 +756,7 @@ export class ImportExportService {
       pendingImages: 0,
     };
 
-    this.logger.log(`Starting V2 import of ${rows.length} products`);
+    this.logger.log(`Starting V2 import of ${rows.length} products (override: ${overrideExisting})`);
 
     // Clear category cache for fresh import
     this.categoryCache.clear();
@@ -766,7 +766,7 @@ export class ImportExportService {
       const rowNumber = i + 2; // Account for header row and 0-index
 
       try {
-        const productId = await this.importProductV2(row);
+        const productId = await this.importProductV2(row, overrideExisting);
 
         // Queue images for lazy download if present
         const imageUrls = this.parseImageUrlsV2(row.SLIKE);
@@ -801,16 +801,14 @@ export class ImportExportService {
   }
 
   // Import a single product from CSV V2 row
-  private async importProductV2(row: CsvRowV2): Promise<string> {
+  private async importProductV2(row: CsvRowV2, overrideExisting: boolean = true): Promise<string> {
     const name = row['IME PRODUKTA'];
     if (!name || name.trim() === '') {
       throw new Error('Product name (IME PRODUKTA) is required');
     }
 
+    // Price is now optional - products without price cannot be ordered
     const price = this.parsePrice(row.CENA);
-    if (price === null) {
-      throw new Error('Valid price (CENA) is required');
-    }
 
     // Check if product already exists by SKU
     let existingProduct: Product | null = null;
@@ -855,10 +853,21 @@ export class ImportExportService {
     let product: Product;
 
     if (existingProduct) {
-      // Update existing product
-      Object.assign(existingProduct, productData);
-      product = await this.productsRepository.save(existingProduct);
-      this.logger.debug(`Updated product: ${name} (SKU: ${row.SKU})`);
+      // Always delete images for re-adding (images always override)
+      if (existingProduct.images?.length) {
+        await this.imagesRepository.delete({ productId: existingProduct.id });
+      }
+
+      if (overrideExisting) {
+        // Update all fields from CSV
+        Object.assign(existingProduct, productData);
+        product = await this.productsRepository.save(existingProduct);
+        this.logger.debug(`Updated product: ${name} (SKU: ${row.SKU})`);
+      } else {
+        // Keep existing data, only images will be updated later
+        product = existingProduct;
+        this.logger.debug(`Kept existing product: ${name} (SKU: ${row.SKU}), only images updated`);
+      }
     } else {
       // Create new product
       product = this.productsRepository.create(productData);
@@ -1105,6 +1114,7 @@ export class ImportExportService {
     csvContent: string,
     skymanCsvContent: string,
     imageBasePath: string,
+    overrideExisting: boolean = true,
   ): Promise<ImportResultV3> {
     const result: ImportResultV3 = {
       success: 0,
@@ -1122,7 +1132,7 @@ export class ImportExportService {
 
     // Step 2: Parse product data from slovene.csv (same format as V2)
     const rows = this.parseCSVv2(csvContent);
-    this.logger.log(`Starting V3 import of ${rows.length} products`);
+    this.logger.log(`Starting V3 import of ${rows.length} products (override: ${overrideExisting})`);
 
     // Clear category cache for fresh import
     this.categoryCache.clear();
@@ -1134,7 +1144,7 @@ export class ImportExportService {
 
       try {
         // Import product (reuse V2 logic)
-        const productId = await this.importProductV2(row);
+        const productId = await this.importProductV2(row, overrideExisting);
 
         // Step 3: Look up images by SKU in the map
         if (sku && imageMap.has(sku)) {
@@ -1212,6 +1222,7 @@ export class ImportExportService {
   async importFromSkymanZIP(
     zipPath: string,
     extractPath: string,
+    overrideExisting: boolean = true,
   ): Promise<ImportResultV3> {
     const zip = new AdmZip(zipPath);
 
@@ -1248,6 +1259,7 @@ export class ImportExportService {
       csvContent,
       skymanCsvContent,
       extractPath, // images/ folder is inside extractPath
+      overrideExisting,
     );
 
     // Clean up extracted files

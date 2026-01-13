@@ -258,14 +258,19 @@ export class ProductsController {
       limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
     }),
   )
-  async importCSVv2(@UploadedFile() file: Express.Multer.File) {
+  async importCSVv2(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('overrideExisting') overrideExisting?: string,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
+    const override = overrideExisting !== 'false'; // Default to true
+
     try {
       const csvContent = fs.readFileSync(file.path, 'utf-8');
-      const result = await this.importExportService.importFromCSVv2(csvContent);
+      const result = await this.importExportService.importFromCSVv2(csvContent, override);
 
       // Clean up temp file
       fs.unlinkSync(file.path);
@@ -363,11 +368,15 @@ export class ProductsController {
       limits: { fileSize: 2000 * 1024 * 1024 }, // 2GB for large image archives
     }),
   )
-  async importSkymanZIP(@UploadedFile() file: Express.Multer.File) {
+  async importSkymanZIP(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('overrideExisting') overrideExisting?: string,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
+    const override = overrideExisting !== 'false'; // Default to true
     const extractPath = path.join('./uploads/temp', `skyman-extract-${uuidv4()}`);
 
     try {
@@ -377,6 +386,7 @@ export class ProductsController {
       const result = await this.importExportService.importFromSkymanZIP(
         file.path,
         extractPath,
+        override,
       );
 
       // Clean up temp file

@@ -14,10 +14,10 @@ const products = ref<Product[]>([])
 const loading = ref(true)
 const search = ref('')
 
-// Import/Export state
 const showImportModal = ref(false)
 const importFile = ref<File | null>(null)
 const importType = ref<'csv' | 'csv-v2' | 'zip' | 'skyman-zip'>('csv-v2')
+const overrideExisting = ref(true)
 const importing = ref(false)
 const importResult = ref<ImportResult | ImportResultV2 | ImportResultV3 | null>(null)
 const exporting = ref(false)
@@ -60,11 +60,11 @@ function handleSearch() {
   loadProducts()
 }
 
-// Import/Export functions
 function openImportModal() {
   showImportModal.value = true
   importFile.value = null
   importResult.value = null
+  overrideExisting.value = true
 }
 
 function closeImportModal() {
@@ -101,11 +101,11 @@ async function handleImport() {
 
   try {
     if (importType.value === 'skyman-zip') {
-      importResult.value = await productsApi.importSkymanZIP(importFile.value)
+      importResult.value = await productsApi.importSkymanZIP(importFile.value, overrideExisting.value)
     } else if (importType.value === 'zip') {
       importResult.value = await productsApi.importZIP(importFile.value)
     } else if (importType.value === 'csv-v2') {
-      importResult.value = await productsApi.importCSVv2(importFile.value)
+      importResult.value = await productsApi.importCSVv2(importFile.value, overrideExisting.value)
     } else {
       importResult.value = await productsApi.importCSV(importFile.value)
     }
@@ -370,6 +370,24 @@ onMounted(loadProducts)
                       ? 'CSV with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, etc. Images are downloaded in background.'
                       : 'CSV file in WooCommerce export format' 
                 }}
+              </p>
+            </div>
+
+            <!-- Override option for existing products -->
+            <div v-if="importType === 'csv-v2' || importType === 'skyman-zip'">
+              <label class="block text-sm font-medium text-secondary-700 mb-2">Existing Products</label>
+              <div class="flex flex-col gap-2">
+                <label class="flex items-center">
+                  <input type="radio" v-model="overrideExisting" :value="true" class="mr-2" />
+                  <span>Override data from CSV (images always updated)</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" v-model="overrideExisting" :value="false" class="mr-2" />
+                  <span>Keep existing data (only update images)</span>
+                </label>
+              </div>
+              <p class="text-xs text-secondary-500 mt-1">
+                Note: Images are always replaced with new ones from the import file.
               </p>
             </div>
 
