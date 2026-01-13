@@ -280,6 +280,56 @@ export class ProductsController {
     }
   }
 
+  // CSV V3 Import endpoint (local images from skyman.csv matching)
+  @Post('import/csv-v3')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Import products from CSV V3 format with local images from skyman.csv (admin only)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['csvContent', 'skymanCsvContent', 'imageBasePath'],
+      properties: {
+        csvContent: {
+          type: 'string',
+          description: 'Content of slovene.csv (product data)',
+        },
+        skymanCsvContent: {
+          type: 'string',
+          description: 'Content of skyman.csv (SKU to image_paths mapping)',
+        },
+        imageBasePath: {
+          type: 'string',
+          description: 'Base path to the ignore folder containing images (e.g., d:/project/ignore)',
+        },
+      },
+    },
+  })
+  async importCSVv3(
+    @Body('csvContent') csvContent: string,
+    @Body('skymanCsvContent') skymanCsvContent: string,
+    @Body('imageBasePath') imageBasePath: string,
+  ) {
+    if (!csvContent) {
+      throw new BadRequestException('csvContent (slovene.csv content) is required');
+    }
+    if (!skymanCsvContent) {
+      throw new BadRequestException('skymanCsvContent (skyman.csv content) is required');
+    }
+    if (!imageBasePath) {
+      throw new BadRequestException('imageBasePath is required');
+    }
+
+    return this.importExportService.importFromCSVv3(
+      csvContent,
+      skymanCsvContent,
+      imageBasePath,
+    );
+  }
+
   // Get image download queue status
   @Get('import/image-status')
   @UseGuards(JwtAuthGuard, RolesGuard)
