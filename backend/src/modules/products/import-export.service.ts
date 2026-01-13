@@ -1201,5 +1201,60 @@ export class ImportExportService {
 
     return result;
   }
+
+  /**
+   * Import products from Skyman ZIP file
+   * Expected ZIP contents:
+   * - slovene.csv (product data)
+   * - skyman.csv (SKU to image_paths mapping)
+   * - images/ folder with image files (organized in subdirectories like full/)
+   */
+  async importFromSkymanZIP(
+    zipPath: string,
+    extractPath: string,
+  ): Promise<ImportResultV3> {
+    const zip = new AdmZip(zipPath);
+
+    // Extract ZIP contents
+    zip.extractAllTo(extractPath, true);
+    this.logger.log(`Extracted Skyman ZIP to: ${extractPath}`);
+
+    // Find slovene.csv
+    const sloveneCsvPath = path.join(extractPath, 'slovene.csv');
+    if (!fs.existsSync(sloveneCsvPath)) {
+      fs.rmSync(extractPath, { recursive: true, force: true });
+      throw new BadRequestException('ZIP file must contain slovene.csv');
+    }
+
+    // Find skyman.csv
+    const skymanCsvPath = path.join(extractPath, 'skyman.csv');
+    if (!fs.existsSync(skymanCsvPath)) {
+      fs.rmSync(extractPath, { recursive: true, force: true });
+      throw new BadRequestException('ZIP file must contain skyman.csv');
+    }
+
+    // Check for images folder
+    const imagesPath = path.join(extractPath, 'images');
+    if (!fs.existsSync(imagesPath)) {
+      this.logger.warn('No images/ folder found in ZIP, images will not be imported');
+    }
+
+    // Read CSV files
+    const csvContent = fs.readFileSync(sloveneCsvPath, 'utf-8');
+    const skymanCsvContent = fs.readFileSync(skymanCsvPath, 'utf-8');
+
+    // Use the existing importFromCSVv3 logic with extractPath as the image base path
+    const result = await this.importFromCSVv3(
+      csvContent,
+      skymanCsvContent,
+      extractPath, // images/ folder is inside extractPath
+    );
+
+    // Clean up extracted files
+    fs.rmSync(extractPath, { recursive: true, force: true });
+    this.logger.log('Cleaned up extracted Skyman ZIP files');
+
+    return result;
+  }
 }
 

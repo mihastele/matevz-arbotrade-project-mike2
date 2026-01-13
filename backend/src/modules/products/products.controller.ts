@@ -330,6 +330,71 @@ export class ProductsController {
     );
   }
 
+  // Skyman ZIP Import endpoint (ZIP containing slovene.csv, skyman.csv, and images/)
+  @Post('import/skyman-zip')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Import products from Skyman ZIP file (slovene.csv + skyman.csv + images/) (admin only)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'ZIP file containing slovene.csv, skyman.csv, and images/ folder',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: importStorage,
+      fileFilter: (req, file, callback) => {
+        if (!file.originalname.match(/\.(zip)$/i)) {
+          callback(new BadRequestException('Only ZIP files are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 2000 * 1024 * 1024 }, // 2GB for large image archives
+    }),
+  )
+  async importSkymanZIP(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const extractPath = path.join('./uploads/temp', `skyman-extract-${uuidv4()}`);
+
+    try {
+      // Ensure extract directory exists
+      fs.mkdirSync(extractPath, { recursive: true });
+
+      const result = await this.importExportService.importFromSkymanZIP(
+        file.path,
+        extractPath,
+      );
+
+      // Clean up temp file
+      fs.unlinkSync(file.path);
+
+      return result;
+    } catch (error) {
+      // Clean up temp files on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      if (fs.existsSync(extractPath)) {
+        fs.rmSync(extractPath, { recursive: true, force: true });
+      }
+      throw error;
+    }
+  }
+
   // Get image download queue status
   @Get('import/image-status')
   @UseGuards(JwtAuthGuard, RolesGuard)

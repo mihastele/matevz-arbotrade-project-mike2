@@ -94,30 +94,12 @@ export const productsApi = {
   },
 
   // Skyman ZIP import with local images matching by SKU
-  importSkymanZIP: async (
-    sloveneCsvFile: File,
-    skymanCsvFile: File,
-    imageBasePath: string,
-  ): Promise<ImportResultV3> => {
-    // Read file contents as text
-    const readFileAsText = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsText(file)
-      })
-    }
-
-    const [csvContent, skymanCsvContent] = await Promise.all([
-      readFileAsText(sloveneCsvFile),
-      readFileAsText(skymanCsvFile),
-    ])
-
-    const { data } = await api.post<ImportResultV3>('/products/import/csv-v3', {
-      csvContent,
-      skymanCsvContent,
-      imageBasePath,
+  // ZIP should contain: slovene.csv, skyman.csv, and images/ folder
+  importSkymanZIP: async (file: File): Promise<ImportResultV3> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post<ImportResultV3>('/products/import/skyman-zip', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
   },
