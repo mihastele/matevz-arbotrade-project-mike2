@@ -109,4 +109,46 @@ export class UploadsController {
       size: file.size,
     }));
   }
+
+  @Post('document')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload a PDF document' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage,
+      fileFilter: (req: any, file: Express.Multer.File, callback: any) => {
+        if (!file.mimetype.match(/\/(pdf)$/)) {
+          callback(new BadRequestException('Only PDF files are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for PDFs
+    }),
+  )
+  uploadDocument(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return {
+      url: `/uploads/${file.filename}`,
+      filename: file.filename,
+      originalname: file.originalname,
+      size: file.size,
+      type: 'pdf',
+    };
+  }
 }

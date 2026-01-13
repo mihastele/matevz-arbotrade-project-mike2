@@ -8,6 +8,7 @@ import { productsApi } from '@/api/products'
 import { categoriesApi } from '@/api/categories'
 import { useToast } from '@/composables/useToast'
 import ImageUploader from '@/components/admin/ImageUploader.vue'
+import DocumentUploader from '@/components/admin/DocumentUploader.vue'
 import ProductImageGrid from '@/components/admin/ProductImageGrid.vue'
 import type { Product, Category, ProductImage } from '@/types'
 
@@ -139,6 +140,25 @@ function setPrimaryImage(id: string) {
   }))
 }
 
+const uploadedDocuments = computed(() => {
+  return uploadedImages.value.filter(img => img.type === 'pdf')
+})
+
+const uploadedPhotos = computed(() => {
+  return uploadedImages.value.filter(img => img.type === 'image' || !img.type)
+})
+
+function handleDocumentsUploaded(urls: string[]) {
+  const newDocs: ProductImage[] = urls.map((url, index) => ({
+    id: `new-doc-${Date.now()}-${index}`,
+    url,
+    type: 'pdf',
+    sortOrder: uploadedImages.value.length + index,
+    isPrimary: false
+  }))
+  uploadedImages.value = [...uploadedImages.value, ...newDocs]
+}
+
 async function handleSubmit() {
   if (!validate()) return
   
@@ -181,6 +201,11 @@ async function handleSubmit() {
   } finally {
     saving.value = false
   }
+}
+
+function getFileNameFromUrl(url: string): string {
+  const parts = url.split('/')
+  return parts[parts.length - 1] || 'Document'
 }
 
 onMounted(() => {
@@ -320,8 +345,8 @@ onMounted(() => {
         
         <div class="space-y-6">
           <ProductImageGrid 
-            v-if="uploadedImages.length > 0"
-            :images="uploadedImages"
+            v-if="uploadedPhotos.length > 0"
+            :images="uploadedPhotos"
             @remove="removeImage"
             @set-primary="setPrimaryImage"
           />
@@ -329,6 +354,49 @@ onMounted(() => {
           <ImageUploader 
             multiple
             @uploaded="handleImagesUploaded"
+            @error="toast.error"
+          />
+        </div>
+      </div>
+
+      <!-- Documents -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-secondary-900">Product Documents (PDF)</h2>
+          <span class="text-sm text-secondary-500">{{ uploadedDocuments.length }} document(s)</span>
+        </div>
+        
+        <div class="space-y-6">
+          <div v-if="uploadedDocuments.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div 
+              v-for="doc in uploadedDocuments" 
+              :key="doc.id"
+              class="flex items-center gap-3 p-3 border border-secondary-200 rounded-xl bg-secondary-50/50"
+            >
+              <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4z"/>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-secondary-900 truncate">{{ doc.alt || getFileNameFromUrl(doc.url) }}</p>
+                <p class="text-xs text-secondary-500">PDF Document</p>
+              </div>
+              <button 
+                type="button"
+                @click="removeImage(doc.id)"
+                class="p-2 text-secondary-400 hover:text-red-600 transition-colors"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <DocumentUploader 
+            multiple
+            @uploaded="handleDocumentsUploaded"
             @error="toast.error"
           />
         </div>

@@ -19,13 +19,16 @@ const quantity = ref(1)
 const selectedVariant = ref<ProductVariant | null>(null)
 const selectedImageIndex = ref(0)
 const addingToCart = ref(false)
-const activeTab = ref<'description' | 'specifications'>('description')
+const activeTab = ref<'description' | 'specifications' | 'documents'>('description')
 
 const images = computed(() => {
   if (!product.value?.images?.length) {
     return [{ id: '0', url: '/placeholder.jpg', alt: 'Product image', isPrimary: true, sortOrder: 0, type: 'image' as const }]
   }
-  return product.value.images.sort((a, b) => {
+  // Filter to only include images (not PDFs or videos)
+  return product.value.images
+    .filter(img => img.type === 'image' || !img.type)
+    .sort((a, b) => {
     if (a.isPrimary) return -1
     if (b.isPrimary) return 1
     return a.sortOrder - b.sortOrder
@@ -65,6 +68,52 @@ const stockQuantity = computed(() => {
   }
   return product.value?.stock || 0
 })
+
+// Documents (PDFs from images or pdfUrls)
+const documents = computed(() => {
+  if (!product.value) return []
+  
+  const docs: Array<{ url: string; name: string; type: string }> = []
+  
+  // Get PDFs from images array
+  if (product.value.images) {
+    product.value.images
+      .filter(img => img.type === 'pdf')
+      .forEach(img => {
+        docs.push({
+          url: img.url,
+          name: img.alt || getFileNameFromUrl(img.url),
+          type: 'pdf'
+        })
+      })
+  }
+  
+  // Get PDFs from pdfUrls array
+  if (product.value.pdfUrls) {
+    product.value.pdfUrls.forEach(url => {
+      docs.push({
+        url,
+        name: getFileNameFromUrl(url),
+        type: 'pdf'
+      })
+    })
+  }
+  
+  return docs
+})
+
+// Videos from videoUrls
+const videos = computed(() => {
+  if (!product.value?.videoUrls) return []
+  return product.value.videoUrls
+})
+
+const hasDocuments = computed(() => documents.value.length > 0 || videos.value.length > 0)
+
+function getFileNameFromUrl(url: string): string {
+  const parts = url.split('/')
+  return parts[parts.length - 1] || 'Document'
+}
 
 const variantOptions = computed(() => {
   if (!product.value?.variants?.length) return []
@@ -311,14 +360,72 @@ watch(() => route.params.slug, loadProduct)
               >
                 Specifications
               </button>
+              <button
+                v-if="hasDocuments"
+                :class="[
+                  'px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors',
+                  activeTab === 'documents' 
+                    ? 'border-primary-600 text-primary-600' 
+                    : 'border-transparent text-secondary-600 hover:text-secondary-900'
+                ]"
+                @click="activeTab = 'documents'"
+              >
+                Documents
+              </button>
             </div>
 
             <div class="py-6">
               <div v-if="activeTab === 'description'" class="prose prose-sm max-w-none">
                 <div v-html="product.description || 'No description available.'"></div>
               </div>
-              <div v-else>
+              <div v-else-if="activeTab === 'specifications'">
                 <p class="text-secondary-500">No specifications available.</p>
+              </div>
+              <div v-else-if="activeTab === 'documents'" class="space-y-6">
+                <!-- PDF Documents -->
+                <div v-if="documents.length > 0">
+                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">PDF Documents</h3>
+                  <div class="space-y-2">
+                    <a
+                      v-for="(doc, index) in documents"
+                      :key="index"
+                      :href="doc.url"
+                      target="_blank"
+                      class="flex items-center gap-3 p-3 bg-secondary-50 rounded-lg hover:bg-secondary-100 transition-colors"
+                    >
+                      <svg class="w-8 h-8 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm7.5 4.5c0 .83-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5V16h1v1.5c0 .28.22.5.5.5h5c.28 0 .5-.22.5-.5V16h1v1.5z"/>
+                      </svg>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-secondary-900 truncate">{{ doc.name }}</p>
+                        <p class="text-xs text-secondary-500">PDF Document</p>
+                      </div>
+                      <svg class="w-5 h-5 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+                
+                <!-- Videos -->
+                <div v-if="videos.length > 0">
+                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">Videos</h3>
+                  <div class="grid gap-4">
+                    <div 
+                      v-for="(videoUrl, index) in videos" 
+                      :key="index"
+                      class="aspect-video bg-secondary-100 rounded-lg overflow-hidden"
+                    >
+                      <iframe
+                        :src="videoUrl"
+                        class="w-full h-full"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                      ></iframe>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
