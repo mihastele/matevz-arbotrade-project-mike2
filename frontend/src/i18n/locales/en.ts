@@ -137,6 +137,7 @@ export default {
     clearAll: 'Clear all',
     category: 'Category',
     allCategories: 'All Categories',
+    viewAll: 'View All',
     priceRange: 'Price Range',
     min: 'Min',
     max: 'Max',

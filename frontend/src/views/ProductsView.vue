@@ -15,6 +15,7 @@ const { t } = useI18n()
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
+const expandedCategory = ref<string | null>(null)
 const loading = ref(true)
 const pagination = ref({
   page: 1,
@@ -40,8 +41,28 @@ const sortOptions = computed(() => [
   { value: 'name-DESC', label: t('productsPage.sort.nameZA') },
 ])
 
-const categoryOptions = computed(() => {
-  return categories.value.map(c => ({ value: c.id, label: c.name }))
+// Get top-level categories for the navigation bar
+const topLevelCategories = computed(() => {
+  return categories.value.filter(cat => !cat.parentId && cat.isActive !== false)
+})
+
+// Flatten all categories for the filter dropdown
+const flatCategories = computed(() => {
+  const flat: Category[] = []
+  const flatten = (cats: Category[]) => {
+    cats.forEach(cat => {
+      flat.push(cat)
+      if (cat.children?.length) {
+        flatten(cat.children)
+      }
+    })
+  }
+  flatten(categories.value)
+  return flat
+})
+
+const flatCategoryOptions = computed(() => {
+  return flatCategories.value.map(c => ({ value: c.id, label: c.name }))
 })
 
 async function loadProducts() {
@@ -73,10 +94,27 @@ async function loadProducts() {
 
 async function loadCategories() {
   try {
-    const response = await categoriesApi.getAll()
+    // Load tree structure for hierarchical navigation
+    const response = await categoriesApi.getTree()
     categories.value = response
   } catch (error) {
     console.error('Failed to load categories:', error)
+  }
+}
+
+function selectCategory(catId: string) {
+  categoryId.value = catId
+  pagination.value.page = 1
+  updateUrl()
+  loadProducts()
+  expandedCategory.value = null
+}
+
+function toggleCategoryExpand(catId: string) {
+  if (expandedCategory.value === catId) {
+    expandedCategory.value = null
+  } else {
+    expandedCategory.value = catId
   }
 }
 
@@ -160,13 +198,111 @@ watch(() => route.query.category, (newCategory) => {
 </script>
 
 <template>
-  <div class="py-8">
-    <div class="container-custom">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-secondary-900">{{ t('productsPage.title') }}</h1>
-        <p class="text-secondary-600 mt-2">{{ t('productsPage.subtitle') }}</p>
+  <div>
+    <!-- Persistent Category Navigation Bar -->
+    <div class="bg-white border-b border-secondary-200 shadow-sm">
+      <div class="container-custom">
+        <div class="py-3">
+          <!-- Category Pills -->
+          <div class="flex flex-wrap gap-2">
+            <!-- All Products -->
+            <button
+              @click="selectCategory('')"
+              :class="[
+                'px-4 py-2 rounded-full text-sm font-medium transition-all',
+                !categoryId
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
+              ]"
+            >
+              {{ t('productsPage.allCategories') }}
+            </button>
+
+            <!-- Category buttons with optional dropdowns -->
+            <div 
+              v-for="category in topLevelCategories" 
+              :key="category.id"
+              class="relative"
+            >
+              <button
+                @click="category.children?.length ? toggleCategoryExpand(category.id) : selectCategory(category.id)"
+                :class="[
+                  'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1',
+                  categoryId === category.id || expandedCategory === category.id
+                    ? 'bg-primary-600 text-white shadow-md'
+                    : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
+                ]"
+              >
+                {{ category.name }}
+                <svg 
+                  v-if="category.children?.length"
+                  class="w-4 h-4 transition-transform"
+                  :class="{ 'rotate-180': expandedCategory === category.id }"
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <!-- Subcategory Dropdown -->
+              <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 -translate-y-2"
+              >
+                <div
+                  v-if="expandedCategory === category.id && category.children?.length"
+                  class="absolute left-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-secondary-100 py-2 min-w-48 z-50"
+                >
+                  <!-- View all in this category -->
+                  <button
+                    @click="selectCategory(category.id)"
+                    class="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium"
+                  >
+                    {{ t('productsPage.viewAll') }} {{ category.name }}
+                  </button>
+                  <hr class="my-2 border-secondary-100" />
+                  <!-- Subcategories -->
+                  <button
+                    v-for="child in category.children"
+                    :key="child.id"
+                    @click="selectCategory(child.id)"
+                    :class="[
+                      'w-full text-left px-4 py-2 text-sm transition-colors',
+                      categoryId === child.id
+                        ? 'bg-primary-50 text-primary-700 font-medium'
+                        : 'text-secondary-700 hover:bg-secondary-50'
+                    ]"
+                  >
+                    {{ child.name }}
+                  </button>
+                </div>
+              </Transition>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- Click-outside handler for dropdowns -->
+    <div 
+      v-if="expandedCategory"
+      class="fixed inset-0 z-40"
+      @click="expandedCategory = null"
+    />
+
+    <div class="py-8">
+      <div class="container-custom">
+        <!-- Header -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-secondary-900">{{ t('productsPage.title') }}</h1>
+          <p class="text-secondary-600 mt-2">{{ t('productsPage.subtitle') }}</p>
+        </div>
 
       <div class="lg:flex lg:gap-8">
         <!-- Sidebar Filters (Desktop) -->
@@ -187,7 +323,7 @@ watch(() => route.query.category, (newCategory) => {
               <BaseSelect
                 v-model="categoryId"
                 :label="t('productsPage.category')"
-                :options="categoryOptions"
+                :options="flatCategoryOptions"
                 :placeholder="t('productsPage.allCategories')"
                 @update:model-value="handleCategoryChange"
               />
@@ -255,7 +391,7 @@ watch(() => route.query.category, (newCategory) => {
             <div class="mt-4 lg:hidden">
               <BaseSelect
                 v-model="categoryId"
-                :options="categoryOptions"
+                :options="flatCategoryOptions"
                 :placeholder="t('productsPage.allCategories')"
                 @update:model-value="handleCategoryChange"
               />
@@ -345,4 +481,5 @@ watch(() => route.query.category, (newCategory) => {
       </div>
     </div>
   </div>
+</div>
 </template>

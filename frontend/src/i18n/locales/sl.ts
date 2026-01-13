@@ -137,6 +137,7 @@ export default {
     clearAll: 'Počisti vse',
     category: 'Kategorija',
     allCategories: 'Vse kategorije',
+    viewAll: 'Poglej vse',
     priceRange: 'Cenovni razpon',
     min: 'Min',
     max: 'Max',

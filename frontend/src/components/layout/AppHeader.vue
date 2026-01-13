@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { categoriesApi } from '@/api/categories'
 import type { Category } from '@/types'
-import CategoryMegaMenu from './CategoryMegaMenu.vue'
 import CategoryMobileMenu from './CategoryMobileMenu.vue'
 
 const { t, locale } = useI18n()
@@ -16,7 +15,6 @@ const cartStore = useCartStore()
 
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
-const categoryMenuOpen = ref(false)
 const mobileCategoryMenuOpen = ref(false)
 const categories = ref<Category[]>([])
 
@@ -50,24 +48,7 @@ function openMobileCategoryMenu() {
   mobileMenuOpen.value = false
 }
 
-let categoryMenuTimeout: ReturnType<typeof setTimeout> | null = null
 
-function handleCategoryMouseEnter() {
-  if (categoryMenuTimeout) {
-    clearTimeout(categoryMenuTimeout)
-  }
-  categoryMenuOpen.value = true
-}
-
-function handleCategoryMouseLeave() {
-  categoryMenuTimeout = setTimeout(() => {
-    categoryMenuOpen.value = false
-  }, 150)
-}
-
-function closeCategoryMenu() {
-  categoryMenuOpen.value = false
-}
 </script>
 
 <template>
@@ -81,28 +62,13 @@ function closeCategoryMenu() {
 
         <!-- Desktop Navigation -->
         <nav class="hidden md:flex items-center space-x-8">
-          <!-- Shop with Mega Menu -->
-          <div 
-            class="relative"
-            @mouseenter="handleCategoryMouseEnter"
-            @mouseleave="handleCategoryMouseLeave"
+          <!-- Products link (simple, no dropdown) -->
+          <RouterLink 
+            to="/products" 
+            class="text-secondary-600 hover:text-primary-600 font-medium"
           >
-            <RouterLink 
-              to="/products" 
-              class="flex items-center gap-1 text-secondary-600 hover:text-primary-600 font-medium py-4"
-            >
-              {{ t('nav.products') }}
-              <svg 
-                class="w-4 h-4 transition-transform duration-200"
-                :class="{ 'rotate-180': categoryMenuOpen }"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </RouterLink>
-          </div>
+            {{ t('nav.products') }}
+          </RouterLink>
           <RouterLink 
             to="/about" 
             class="text-secondary-600 hover:text-primary-600 font-medium"
@@ -291,12 +257,7 @@ function closeCategoryMenu() {
       </div>
     </div>
 
-    <!-- Desktop Mega Menu -->
-    <CategoryMegaMenu 
-      :categories="categories" 
-      :visible="categoryMenuOpen"
-      @close="closeCategoryMenu"
-    />
+
   </header>
 
   <!-- Mobile Category Menu (outside header for proper z-index) -->
