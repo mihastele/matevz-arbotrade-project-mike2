@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { productsApi } from '@/api/products'
-import type { ImportResult, ImportResultV2 } from '@/api/products'
+import type { ImportResult, ImportResultV2, ImportResultV3 } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import type { Product } from '@/types'
 
@@ -17,9 +17,11 @@ const search = ref('')
 // Import/Export state
 const showImportModal = ref(false)
 const importFile = ref<File | null>(null)
-const importType = ref<'csv' | 'csv-v2' | 'zip'>('csv-v2')
+const skymanCsvFile = ref<File | null>(null)
+const imageBasePath = ref('d:/development/paid/matevzzupan/vuenest/ignore')
+const importType = ref<'csv' | 'csv-v2' | 'zip' | 'skyman-zip'>('csv-v2')
 const importing = ref(false)
-const importResult = ref<ImportResult | ImportResultV2 | null>(null)
+const importResult = ref<ImportResult | ImportResultV2 | ImportResultV3 | null>(null)
 const exporting = ref(false)
 
 function formatPrice(price: number): string {
@@ -70,6 +72,7 @@ function openImportModal() {
 function closeImportModal() {
   showImportModal.value = false
   importFile.value = null
+  skymanCsvFile.value = null
   importResult.value = null
 }
 
@@ -82,9 +85,16 @@ function handleFileSelect(event: Event) {
     // Auto-detect type from extension
     if (file.name.endsWith('.zip')) {
       importType.value = 'zip'
-    } else if (file.name.endsWith('.csv')) {
+    } else if (file.name.endsWith('.csv') && importType.value !== 'skyman-zip') {
       importType.value = 'csv'
     }
+  }
+}
+
+function handleSkymanFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    skymanCsvFile.value = target.files[0]
   }
 }
 
@@ -98,7 +108,18 @@ async function handleImport() {
   importResult.value = null
 
   try {
-    if (importType.value === 'zip') {
+    if (importType.value === 'skyman-zip') {
+      if (!skymanCsvFile.value) {
+        toast.error('Please select the skyman.csv file')
+        importing.value = false
+        return
+      }
+      importResult.value = await productsApi.importSkymanZIP(
+        importFile.value,
+        skymanCsvFile.value,
+        imageBasePath.value,
+      )
+    } else if (importType.value === 'zip') {
       importResult.value = await productsApi.importZIP(importFile.value)
     } else if (importType.value === 'csv-v2') {
       importResult.value = await productsApi.importCSVv2(importFile.value)
@@ -330,6 +351,10 @@ onMounted(loadProducts)
               <label class="block text-sm font-medium text-secondary-700 mb-2">Import Type</label>
               <div class="flex flex-col gap-2">
                 <label class="flex items-center">
+                  <input type="radio" v-model="importType" value="skyman-zip" class="mr-2" />
+                  <span class="font-medium text-primary-700">Skyman ZIP Import (Local Images)</span>
+                </label>
+                <label class="flex items-center">
                   <input type="radio" v-model="importType" value="csv-v2" class="mr-2" />
                   <span>CSV V2 (New Format)</span>
                 </label>
@@ -344,8 +369,42 @@ onMounted(loadProducts)
               </div>
             </div>
 
-            <!-- File input -->
-            <div>
+            <!-- Skyman ZIP specific inputs -->
+            <template v-if="importType === 'skyman-zip'">
+              <div>
+                <label class="block text-sm font-medium text-secondary-700 mb-2">Products CSV (slovene.csv)</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  @change="handleFileSelect"
+                  class="block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-secondary-700 mb-2">Skyman CSV (skyman.csv)</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  @change="handleSkymanFileSelect"
+                  class="block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-secondary-700 mb-2">Image Base Path</label>
+                <input
+                  v-model="imageBasePath"
+                  type="text"
+                  placeholder="d:/project/ignore"
+                  class="block w-full border rounded-lg px-3 py-2 text-sm"
+                />
+                <p class="text-xs text-secondary-500 mt-1">
+                  Path to the folder containing the images/ subfolder (e.g., d:/project/ignore)
+                </p>
+              </div>
+            </template>
+
+            <!-- Standard file input -->
+            <div v-else>
               <label class="block text-sm font-medium text-secondary-700 mb-2">Select File</label>
               <input
                 type="file"
@@ -357,7 +416,7 @@ onMounted(loadProducts)
                 {{ importType === 'zip' 
                   ? 'ZIP file should contain products.csv and an images/ folder' 
                   : importType === 'csv-v2'
-                    ? 'CSV with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, PODKATEGORIJA, PODPODKATEGORIJA, KRATEK OPIS, DOLGI OPIS, CENA, SLIKE, URL. Images are downloaded in background.'
+                    ? 'CSV with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, etc. Images are downloaded in background.'
                     : 'CSV file in WooCommerce export format' 
                 }}
               </p>
