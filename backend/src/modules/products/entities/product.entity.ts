@@ -8,6 +8,7 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
+  Index,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { ProductImage } from './product-image.entity';
@@ -26,12 +27,14 @@ export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @Column()
   name: string;
 
   @Column({ unique: true })
   slug: string;
 
+  @Index()
   @Column({ nullable: true })
   sku: string;
 
@@ -41,6 +44,7 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   shortDescription: string;
 
+  @Index()
   @Column({ type: 'text', nullable: true })
   description: string;
 

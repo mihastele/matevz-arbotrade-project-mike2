@@ -13,6 +13,13 @@ const toast = useToast()
 const products = ref<Product[]>([])
 const loading = ref(true)
 const search = ref('')
+const pagination = ref({
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 0
+})
+const filterStatus = ref<string>('') // Empty means all
 
 const showImportModal = ref(false)
 const importFile = ref<File | null>(null)
@@ -32,16 +39,32 @@ function formatPrice(price: number): string {
 async function loadProducts() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = {}
+    const params: Record<string, unknown> = {
+      page: pagination.value.page,
+      limit: pagination.value.limit,
+    }
     if (search.value) params.search = search.value
+    if (filterStatus.value) {
+      params.status = filterStatus.value
+    } else {
+      params.showAll = true
+    }
     
     const response = await productsApi.getAll(params)
     products.value = response.data
+    pagination.value.total = response.meta.total
+    pagination.value.totalPages = response.meta.totalPages
   } catch (error) {
     toast.error('Failed to load products')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.value.page = page
+  loadProducts()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function deleteProduct(id: string) {
@@ -178,15 +201,27 @@ onMounted(loadProducts)
       </div>
     </div>
 
-    <!-- Search -->
+    <!-- Search & Filters -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="flex gap-4">
+      <div class="flex flex-col md:flex-row gap-4">
         <div class="flex-1">
           <BaseInput
             v-model="search"
             placeholder="Search products..."
             @keyup.enter="handleSearch"
           />
+        </div>
+        <div class="w-full md:w-48">
+          <select
+            v-model="filterStatus"
+            class="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            @change="handleSearch"
+          >
+            <option value="">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
         </div>
         <BaseButton @click="handleSearch">Search</BaseButton>
       </div>
@@ -304,6 +339,48 @@ onMounted(loadProducts)
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="pagination.totalPages > 1" class="mt-8 flex justify-center">
+      <nav class="flex items-center gap-2">
+        <button
+          :disabled="pagination.page === 1"
+          class="px-3 py-2 rounded-lg border border-secondary-300 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handlePageChange(pagination.page - 1)"
+        >
+          Previous
+        </button>
+        
+        <template v-for="page in pagination.totalPages" :key="page">
+          <button
+            v-if="page === 1 || page === pagination.totalPages || (page >= pagination.page - 1 && page <= pagination.page + 1)"
+            :class="[
+              'w-10 h-10 rounded-lg',
+              page === pagination.page
+                ? 'bg-primary-600 text-white'
+                : 'border border-secondary-300 hover:bg-secondary-50'
+            ]"
+            @click="handlePageChange(page)"
+          >
+            {{ page }}
+          </button>
+          <span 
+            v-else-if="page === pagination.page - 2 || page === pagination.page + 2"
+            class="px-2"
+          >
+            ...
+          </span>
+        </template>
+        
+        <button
+          :disabled="pagination.page === pagination.totalPages"
+          class="px-3 py-2 rounded-lg border border-secondary-300 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handlePageChange(pagination.page + 1)"
+        >
+          Next
+        </button>
+      </nav>
     </div>
 
     <!-- Import Modal -->

@@ -17,7 +17,7 @@ export class ProductsService {
     private imagesRepository: Repository<ProductImage>,
     @InjectRepository(ProductVariant)
     private variantsRepository: Repository<ProductVariant>,
-  ) {}
+  ) { }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const { images, variants, ...productData } = createProductDto;
@@ -109,10 +109,11 @@ export class ProductsService {
     // Status filter
     if (status) {
       queryBuilder.andWhere('product.status = :status', { status });
-    } else {
-      // By default, only show published products for storefront
+    } else if (status === undefined && !query.showAll) {
+      // Default to PUBLISHED unless showAll is explicitly true
       queryBuilder.andWhere('product.status = :status', { status: ProductStatus.PUBLISHED });
     }
+    // If status is explicitly null or some other "all" indicator, we don't add the WHERE clause
 
     // Featured filter
     if (isFeatured !== undefined) {
@@ -196,7 +197,7 @@ export class ProductsService {
     if (images) {
       // Remove existing images
       await this.imagesRepository.delete({ productId: id });
-      
+
       // Create new images
       const productImages = images.map((img, index) =>
         this.imagesRepository.create({
@@ -213,7 +214,7 @@ export class ProductsService {
     if (variants) {
       // Remove existing variants
       await this.variantsRepository.delete({ productId: id });
-      
+
       // Create new variants
       const productVariants = variants.map((v) =>
         this.variantsRepository.create({
@@ -242,18 +243,29 @@ export class ProductsService {
     await this.productsRepository.decrement({ id }, 'stock', quantity);
   }
 
+  private featuredProductsCache: { data: Product[], timestamp: number } | null = null;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   async getFeaturedProducts(limit = 8): Promise<Product[]> {
-    return this.productsRepository.find({
+    const now = Date.now();
+    if (this.featuredProductsCache && (now - this.featuredProductsCache.timestamp) < this.CACHE_TTL) {
+      return this.featuredProductsCache.data.slice(0, limit);
+    }
+
+    const products = await this.productsRepository.find({
       where: { isFeatured: true, status: ProductStatus.PUBLISHED },
       relations: ['images', 'category'],
       order: { createdAt: 'DESC' },
       take: limit,
     });
+
+    this.featuredProductsCache = { data: products, timestamp: now };
+    return products;
   }
 
   async getRelatedProducts(productId: string, limit = 4): Promise<Product[]> {
     const product = await this.findOne(productId);
-    
+
     return this.productsRepository.find({
       where: {
         categoryId: product.categoryId,
