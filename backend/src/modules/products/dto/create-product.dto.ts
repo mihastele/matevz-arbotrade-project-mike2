@@ -15,6 +15,11 @@ import { ProductStatus } from '../entities/product.entity';
 import { MediaType } from '../entities/product-image.entity';
 
 export class CreateProductImageDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @ApiProperty()
   @IsString()
   url: string;
@@ -41,6 +46,11 @@ export class CreateProductImageDto {
 }
 
 export class CreateProductVariantDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @ApiProperty()
   @IsString()
   name: string;
