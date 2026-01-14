@@ -227,121 +227,15 @@ export class ProductsController {
     }
   }
 
-  // CSV V2 Import endpoint (new format with 3-level categories)
-  @Post('import/csv-v2')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Import products from CSV V2 format with lazy image downloading (admin only)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-          description: 'CSV file with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, PODKATEGORIJA, PODPODKATEGORIJA, KRATEK OPIS, DOLGI OPIS, CENA, SLIKE, URL',
-        },
-      },
-    },
-  })
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: importStorage,
-      fileFilter: (req, file, callback) => {
-        if (!file.originalname.match(/\.(csv)$/i)) {
-          callback(new BadRequestException('Only CSV files are allowed'), false);
-        }
-        callback(null, true);
-      },
-      limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
-    }),
-  )
-  async importCSVv2(
-    @UploadedFile() file: Express.Multer.File,
-    @Body('overrideExisting') overrideExisting?: string,
-  ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
 
-    const override = overrideExisting !== 'false'; // Default to true
 
-    try {
-      const csvContent = fs.readFileSync(file.path, 'utf-8');
-      const result = await this.importExportService.importFromCSVv2(csvContent, override);
-
-      // Clean up temp file
-      fs.unlinkSync(file.path);
-
-      return result;
-    } catch (error) {
-      // Clean up temp file on error
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-      throw error;
-    }
-  }
-
-  // CSV V3 Import endpoint (local images from skyman.csv matching)
-  @Post('import/csv-v3')
+  // Skyman Index ZIP Import endpoint (ZIP containing index.csv and images/)
+  @Post('import/skyman-index-zip')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Import products from CSV V3 format with local images from skyman.csv (admin only)',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['csvContent', 'skymanCsvContent', 'imageBasePath'],
-      properties: {
-        csvContent: {
-          type: 'string',
-          description: 'Content of slovene.csv (product data)',
-        },
-        skymanCsvContent: {
-          type: 'string',
-          description: 'Content of skyman.csv (SKU to image_paths mapping)',
-        },
-        imageBasePath: {
-          type: 'string',
-          description: 'Base path to the ignore folder containing images (e.g., d:/project/ignore)',
-        },
-      },
-    },
-  })
-  async importCSVv3(
-    @Body('csvContent') csvContent: string,
-    @Body('skymanCsvContent') skymanCsvContent: string,
-    @Body('imageBasePath') imageBasePath: string,
-  ) {
-    if (!csvContent) {
-      throw new BadRequestException('csvContent (slovene.csv content) is required');
-    }
-    if (!skymanCsvContent) {
-      throw new BadRequestException('skymanCsvContent (skyman.csv content) is required');
-    }
-    if (!imageBasePath) {
-      throw new BadRequestException('imageBasePath is required');
-    }
-
-    return this.importExportService.importFromCSVv3(
-      csvContent,
-      skymanCsvContent,
-      imageBasePath,
-    );
-  }
-
-  // Skyman ZIP Import endpoint (ZIP containing slovene.csv, skyman.csv, and images/)
-  @Post('import/skyman-zip')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Import products from Skyman ZIP file (slovene.csv + skyman.csv + images/) (admin only)',
+    summary: 'Import products from Skyman Index ZIP file (index.csv + images/) (admin only)',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -351,7 +245,11 @@ export class ProductsController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'ZIP file containing slovene.csv, skyman.csv, and images/ folder',
+          description: 'ZIP file containing index.csv (merged product data with image_paths) and images/ folder',
+        },
+        overrideExisting: {
+          type: 'string',
+          description: 'Set to "false" to skip updating existing products (default: true)',
         },
       },
     },
@@ -368,7 +266,7 @@ export class ProductsController {
       limits: { fileSize: 2000 * 1024 * 1024 }, // 2GB for large image archives
     }),
   )
-  async importSkymanZIP(
+  async importSkymanIndexZIP(
     @UploadedFile() file: Express.Multer.File,
     @Body('overrideExisting') overrideExisting?: string,
   ) {
@@ -377,13 +275,13 @@ export class ProductsController {
     }
 
     const override = overrideExisting !== 'false'; // Default to true
-    const extractPath = path.join('./uploads/temp', `skyman-extract-${uuidv4()}`);
+    const extractPath = path.join('./uploads/temp', `skyman-index-extract-${uuidv4()}`);
 
     try {
       // Ensure extract directory exists
       fs.mkdirSync(extractPath, { recursive: true });
 
-      const result = await this.importExportService.importFromSkymanZIP(
+      const result = await this.importExportService.importFromSkymanIndexZIP(
         file.path,
         extractPath,
         override,

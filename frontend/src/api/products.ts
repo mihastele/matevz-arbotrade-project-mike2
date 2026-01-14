@@ -7,10 +7,7 @@ export interface ImportResult {
   errors: Array<{ row: number; error: string; name?: string }>
 }
 
-export interface ImportResultV2 extends ImportResult {
-  pendingImages: number
-  message?: string
-}
+
 
 export interface ImportResultV3 extends ImportResult {
   imagesImported: number
@@ -74,17 +71,6 @@ export const productsApi = {
     return data
   },
 
-  // CSV V2 import with lazy image downloading
-  importCSVv2: async (file: File, overrideExisting: boolean = true): Promise<ImportResultV2> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('overrideExisting', String(overrideExisting))
-    const { data } = await api.post<ImportResultV2>('/products/import/csv-v2', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return data
-  },
-
   importZIP: async (file: File): Promise<ImportResult> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -94,13 +80,13 @@ export const productsApi = {
     return data
   },
 
-  // Skyman ZIP import with local images matching by SKU
-  // ZIP should contain: slovene.csv, skyman.csv, and images/ folder
-  importSkymanZIP: async (file: File, overrideExisting: boolean = true): Promise<ImportResultV3> => {
+  // Skyman Index ZIP import with local images from index.csv
+  // ZIP should contain: index.csv (merged product + image_paths) and images/ folder
+  importSkymanIndexZIP: async (file: File, overrideExisting: boolean = true): Promise<ImportResultV3> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('overrideExisting', String(overrideExisting))
-    const { data } = await api.post<ImportResultV3>('/products/import/skyman-zip', formData, {
+    const { data } = await api.post<ImportResultV3>('/products/import/skyman-index-zip', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data

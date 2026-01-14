@@ -78,6 +78,21 @@ interface SkymanCsvRow {
   [key: string]: string | undefined;
 }
 
+// Index CSV column mapping for Skyman Index ZIP import (single merged CSV with image_paths)
+interface CsvRowIndex {
+  SKU: string;
+  BRAND: string;
+  'IME PRODUKTA': string;
+  KATEGORIJA: string;
+  PODKATEGORIJA: string;
+  PODPODKATEGORIJA: string;
+  'KRATEK OPIS': string;
+  'DOLGI OPIS': string;
+  CENA: string;
+  image_paths: string; // Pipe-separated local image paths from the images/ folder
+  [key: string]: string | undefined;
+}
+
 // V3 Import result (local images)
 export interface ImportResultV3 {
   success: number;
@@ -1268,5 +1283,157 @@ export class ImportExportService {
 
     return result;
   }
-}
 
+  /**
+   * Import products from Skyman Index ZIP file (optimized single-CSV format)
+   * Expected ZIP contents:
+   * - index.csv (merged product data + image_paths column)
+   * - images/ folder with image files (organized in subdirectories like full/)
+   */
+  async importFromSkymanIndexZIP(
+    zipPath: string,
+    extractPath: string,
+    overrideExisting: boolean = true,
+  ): Promise<ImportResultV3> {
+    const zip = new AdmZip(zipPath);
+
+    // Extract ZIP contents
+    zip.extractAllTo(extractPath, true);
+    this.logger.log(`Extracted Skyman Index ZIP to: ${extractPath}`);
+
+    // Find index.csv
+    const indexCsvPath = path.join(extractPath, 'index.csv');
+    if (!fs.existsSync(indexCsvPath)) {
+      fs.rmSync(extractPath, { recursive: true, force: true });
+      throw new BadRequestException('ZIP file must contain index.csv');
+    }
+
+    // Check for images folder
+    const imagesPath = path.join(extractPath, 'images');
+    if (!fs.existsSync(imagesPath)) {
+      this.logger.warn('No images/ folder found in ZIP, images will not be imported');
+    }
+
+    // Read the single CSV file and parse it
+    const csvContent = fs.readFileSync(indexCsvPath, 'utf-8');
+    const rows = this.parseIndexCSV(csvContent);
+
+    this.logger.log(`Starting Skyman Index import of ${rows.length} products (override: ${overrideExisting})`);
+
+    // Clear category cache for fresh import
+    this.categoryCache.clear();
+
+    const result: ImportResultV3 = {
+      success: 0,
+      failed: 0,
+      errors: [],
+      imagesImported: 0,
+      imagesFailed: 0,
+    };
+
+    // Single-pass: process each row with both product data and images
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2; // Account for header row and 0-index
+
+      try {
+        // Import product using existing V2 logic
+        const productId = await this.importProductV2(row as any, overrideExisting);
+
+        // Parse image paths from the index CSV row (pipe-separated)
+        const imagePaths = row.image_paths
+          ? row.image_paths.split('|').map(p => p.trim()).filter(p => p)
+          : [];
+
+        // Copy images from the images/ folder
+        for (let j = 0; j < imagePaths.length; j++) {
+          const relativePath = imagePaths[j];
+          const fullPath = path.join(extractPath, 'images', relativePath);
+
+          const uploadedPath = this.copyLocalImage(fullPath);
+
+          if (uploadedPath) {
+            const productImage = this.imagesRepository.create({
+              url: uploadedPath,
+              type: MediaType.IMAGE,
+              productId: productId,
+              sortOrder: j,
+              isPrimary: j === 0,
+            });
+            await this.imagesRepository.save(productImage);
+            result.imagesImported++;
+          } else {
+            result.imagesFailed++;
+          }
+        }
+
+        result.success++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push({
+          row: rowNumber,
+          error: error.message,
+          name: row['IME PRODUKTA'],
+        });
+        this.logger.warn(`Failed to import row ${rowNumber}: ${error.message}`);
+      }
+    }
+
+    // Clean up extracted files
+    fs.rmSync(extractPath, { recursive: true, force: true });
+    this.logger.log('Cleaned up extracted Skyman Index ZIP files');
+
+    this.logger.log(
+      `Skyman Index Import completed: ${result.success} products success, ${result.failed} failed, ${result.imagesImported} images imported, ${result.imagesFailed} images failed`,
+    );
+
+    result.message = `Imported ${result.success} products with ${result.imagesImported} images. ${result.imagesFailed} images could not be found.`;
+
+    return result;
+  }
+
+  /**
+   * Parse Index CSV content to array of CsvRowIndex objects
+   */
+  private parseIndexCSV(content: string): CsvRowIndex[] {
+    const lines = content.split('\n');
+    if (lines.length < 2) {
+      throw new BadRequestException('CSV file is empty or has no data rows');
+    }
+
+    // Parse header
+    const headerLine = lines[0];
+    const headers = this.parseCSVLine(headerLine);
+
+    const rows: CsvRowIndex[] = [];
+    let currentLine = '';
+    let inQuote = false;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Handle multi-line quoted fields
+      for (const char of line) {
+        if (char === '"') {
+          inQuote = !inQuote;
+        }
+      }
+
+      currentLine += (currentLine ? '\n' : '') + line;
+
+      if (!inQuote) {
+        if (currentLine.trim()) {
+          const values = this.parseCSVLine(currentLine);
+          const row: CsvRowIndex = {} as CsvRowIndex;
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          rows.push(row);
+        }
+        currentLine = '';
+      }
+    }
+
+    return rows;
+  }
+}

@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { productsApi } from '@/api/products'
-import type { ImportResult, ImportResultV2, ImportResultV3 } from '@/api/products'
+import type { ImportResult, ImportResultV3 } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import type { Product } from '@/types'
 
@@ -16,10 +16,10 @@ const search = ref('')
 
 const showImportModal = ref(false)
 const importFile = ref<File | null>(null)
-const importType = ref<'csv' | 'csv-v2' | 'zip' | 'skyman-zip'>('csv-v2')
+const importType = ref<'csv' | 'zip' | 'skyman-index-zip'>('skyman-index-zip')
 const overrideExisting = ref(true)
 const importing = ref(false)
-const importResult = ref<ImportResult | ImportResultV2 | ImportResultV3 | null>(null)
+const importResult = ref<ImportResult | ImportResultV3 | null>(null)
 const exporting = ref(false)
 
 function formatPrice(price: number): string {
@@ -79,8 +79,8 @@ function handleFileSelect(event: Event) {
     const file = target.files[0]
     importFile.value = file
     
-    // Auto-detect type from extension (except if explicitly set to skyman-zip)
-    if (importType.value !== 'skyman-zip') {
+    // Auto-detect type from extension (except if explicitly set to skyman-index-zip)
+    if (importType.value !== 'skyman-index-zip') {
       if (file.name.endsWith('.zip')) {
         importType.value = 'zip'
       } else if (file.name.endsWith('.csv')) {
@@ -100,12 +100,10 @@ async function handleImport() {
   importResult.value = null
 
   try {
-    if (importType.value === 'skyman-zip') {
-      importResult.value = await productsApi.importSkymanZIP(importFile.value, overrideExisting.value)
+    if (importType.value === 'skyman-index-zip') {
+      importResult.value = await productsApi.importSkymanIndexZIP(importFile.value, overrideExisting.value)
     } else if (importType.value === 'zip') {
       importResult.value = await productsApi.importZIP(importFile.value)
-    } else if (importType.value === 'csv-v2') {
-      importResult.value = await productsApi.importCSVv2(importFile.value, overrideExisting.value)
     } else {
       importResult.value = await productsApi.importCSV(importFile.value)
     }
@@ -334,12 +332,8 @@ onMounted(loadProducts)
               <label class="block text-sm font-medium text-secondary-700 mb-2">Import Type</label>
               <div class="flex flex-col gap-2">
                 <label class="flex items-center">
-                  <input type="radio" v-model="importType" value="skyman-zip" class="mr-2" />
-                  <span class="font-medium text-primary-700">Skyman ZIP Import (Local Images)</span>
-                </label>
-                <label class="flex items-center">
-                  <input type="radio" v-model="importType" value="csv-v2" class="mr-2" />
-                  <span>CSV V2 (New Format)</span>
+                  <input type="radio" v-model="importType" value="skyman-index-zip" class="mr-2" />
+                  <span class="font-medium text-primary-700">Skyman Index ZIP (Recommended)</span>
                 </label>
                 <label class="flex items-center">
                   <input type="radio" v-model="importType" value="csv" class="mr-2" />
@@ -357,24 +351,22 @@ onMounted(loadProducts)
               <label class="block text-sm font-medium text-secondary-700 mb-2">Select File</label>
               <input
                 type="file"
-                :accept="importType === 'skyman-zip' || importType === 'zip' ? '.zip' : '.csv'"
+                :accept="importType === 'skyman-index-zip' || importType === 'zip' ? '.zip' : '.csv'"
                 @change="handleFileSelect"
                 class="block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
               />
               <p class="text-xs text-secondary-500 mt-1">
-                {{ importType === 'skyman-zip'
-                  ? 'ZIP file must contain: slovene.csv, skyman.csv, and images/ folder'
+                {{ importType === 'skyman-index-zip'
+                  ? 'ZIP file must contain: index.csv (with image_paths column) and images/ folder'
                   : importType === 'zip' 
                     ? 'ZIP file should contain products.csv and an images/ folder' 
-                    : importType === 'csv-v2'
-                      ? 'CSV with columns: SKU, BRAND, IME PRODUKTA, KATEGORIJA, etc. Images are downloaded in background.'
-                      : 'CSV file in WooCommerce export format' 
+                    : 'CSV file in WooCommerce export format' 
                 }}
               </p>
             </div>
 
             <!-- Override option for existing products -->
-            <div v-if="importType === 'csv-v2' || importType === 'skyman-zip'">
+            <div v-if="importType === 'skyman-index-zip'">
               <label class="block text-sm font-medium text-secondary-700 mb-2">Existing Products</label>
               <div class="flex flex-col gap-2">
                 <label class="flex items-center">
