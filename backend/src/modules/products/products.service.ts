@@ -58,9 +58,9 @@ export class ProductsService {
   }
 
   async findAll(query: QueryProductsDto) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const {
-      page = 1,
-      limit = 20,
       search,
       categoryId,
       categoryIds,
@@ -107,10 +107,12 @@ export class ProductsService {
     }
 
     // Status filter
-    if (status) {
+    if (query.showAll) {
+      // Don't add status filter if showAll is true
+    } else if (status) {
       queryBuilder.andWhere('product.status = :status', { status });
-    } else if (status === undefined && !query.showAll) {
-      // Default to PUBLISHED unless showAll is explicitly true
+    } else {
+      // Default to PUBLISHED
       queryBuilder.andWhere('product.status = :status', { status: ProductStatus.PUBLISHED });
     }
     // If status is explicitly null or some other "all" indicator, we don't add the WHERE clause
@@ -135,18 +137,25 @@ export class ProductsService {
     }
 
     // Sorting
-    const validSortFields = ['name', 'price', 'createdAt', 'stock'];
+    const validSortFields = ['name', 'price', 'createdAt', 'stock', 'status'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
-    queryBuilder.orderBy(`product.${sortField}`, sortOrder === 'ASC' ? 'ASC' : 'DESC');
+    const direction = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    // Also sort images
-    queryBuilder.addOrderBy('images.sortOrder', 'ASC');
+    queryBuilder.orderBy(`product.${sortField}`, direction);
+    queryBuilder.addOrderBy('product.id', direction); // Stable secondary sort matching primary direction
 
     // Pagination
     const skip = (page - 1) * limit;
     queryBuilder.skip(skip).take(limit);
 
     const [products, total] = await queryBuilder.getManyAndCount();
+
+    // Sort images in memory to avoid potential join order issues during count/pagination
+    products.forEach(product => {
+      if (product.images && product.images.length > 0) {
+        product.images.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      }
+    });
 
     return {
       data: products,
@@ -255,7 +264,7 @@ export class ProductsService {
     const products = await this.productsRepository.find({
       where: { isFeatured: true, status: ProductStatus.PUBLISHED },
       relations: ['images', 'category'],
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'ASC' },
       take: limit,
     });
 
@@ -272,7 +281,7 @@ export class ProductsService {
         status: ProductStatus.PUBLISHED,
       },
       relations: ['images'],
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'ASC' },
       take: limit + 1,
     }).then((products) => products.filter((p) => p.id !== productId).slice(0, limit));
   }
