@@ -32,25 +32,27 @@ export class ProductsService {
 
     // Create images
     if (images && images.length > 0) {
-      const productImages = images.map((img, index) =>
-        this.imagesRepository.create({
-          ...img,
+      const productImages = images.map((img, index) => {
+        const { id: _, ...imageData } = img;
+        return this.imagesRepository.create({
+          ...imageData,
           productId: savedProduct.id,
           sortOrder: img.sortOrder ?? index,
           isPrimary: img.isPrimary ?? index === 0,
-        }),
-      );
+        });
+      });
       await this.imagesRepository.save(productImages);
     }
 
     // Create variants
     if (variants && variants.length > 0) {
-      const productVariants = variants.map((v) =>
-        this.variantsRepository.create({
-          ...v,
+      const productVariants = variants.map((v) => {
+        const { id: _, ...variantData } = v;
+        return this.variantsRepository.create({
+          ...variantData,
           productId: savedProduct.id,
-        }),
-      );
+        });
+      });
       await this.variantsRepository.save(productVariants);
     }
 
@@ -208,14 +210,15 @@ export class ProductsService {
       await this.imagesRepository.delete({ productId: id });
 
       // Create new images
-      const productImages = images.map((img, index) =>
-        this.imagesRepository.create({
-          ...img,
+      const productImages = images.map((img, index) => {
+        const { id: _, ...imageData } = img;
+        return this.imagesRepository.create({
+          ...imageData,
           productId: id,
           sortOrder: img.sortOrder ?? index,
           isPrimary: img.isPrimary ?? index === 0,
-        }),
-      );
+        });
+      });
       await this.imagesRepository.save(productImages);
     }
 
@@ -225,12 +228,13 @@ export class ProductsService {
       await this.variantsRepository.delete({ productId: id });
 
       // Create new variants
-      const productVariants = variants.map((v) =>
-        this.variantsRepository.create({
-          ...v,
+      const productVariants = variants.map((v) => {
+        const { id: _, ...variantData } = v;
+        return this.variantsRepository.create({
+          ...variantData,
           productId: id,
-        }),
-      );
+        });
+      });
       await this.variantsRepository.save(productVariants);
     }
 
