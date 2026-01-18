@@ -349,7 +349,7 @@ watch(() => route.params.slug, loadProduct)
               >
                 Description
               </button>
-              <button
+              <!-- <button
                 :class="[
                   'px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors',
                   activeTab === 'specifications' 
@@ -359,7 +359,7 @@ watch(() => route.params.slug, loadProduct)
                 @click="activeTab = 'specifications'"
               >
                 Specifications
-              </button>
+              </button> -->
               <button
                 v-if="hasDocuments"
                 :class="[
@@ -378,9 +378,9 @@ watch(() => route.params.slug, loadProduct)
               <div v-if="activeTab === 'description'" class="prose prose-sm max-w-none">
                 <div v-html="product.description || 'No description available.'"></div>
               </div>
-              <div v-else-if="activeTab === 'specifications'">
+              <!-- <div v-else-if="activeTab === 'specifications'">
                 <p class="text-secondary-500">No specifications available.</p>
-              </div>
+              </div> -->
               <div v-else-if="activeTab === 'documents'" class="space-y-6">
                 <!-- PDF Documents -->
                 <div v-if="documents.length > 0">
