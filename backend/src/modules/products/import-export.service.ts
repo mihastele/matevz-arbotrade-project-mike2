@@ -8,7 +8,7 @@ import { Repository, DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import AdmZip = require('adm-zip');
-import { Product, ProductStatus } from './entities/product.entity';
+import { Product, ProductStatus, ProductDocument } from './entities/product.entity';
 import { ProductImage, MediaType } from './entities/product-image.entity';
 import { Category } from '../categories/entities/category.entity';
 
@@ -90,6 +90,7 @@ interface CsvRowIndex {
   'DOLGI OPIS': string;
   CENA: string;
   image_paths: string; // Pipe-separated local image paths from the images/ folder
+  pdfs: string; // JSON array string: [{"name": "...", "link": "..."}, ...]
   [key: string]: string | undefined;
 }
 
@@ -852,6 +853,22 @@ export class ImportExportService {
       }
     }
 
+    // Parse documents/PDFs from JSON column
+    let documents: ProductDocument[] | undefined;
+    if ((row as any).pdfs && (row as any).pdfs.trim()) {
+      try {
+        const parsedDocs = JSON.parse((row as any).pdfs);
+        if (Array.isArray(parsedDocs)) {
+          documents = parsedDocs.map((doc: any) => ({
+            name: doc.name || '',
+            link: doc.link || '',
+          })).filter((doc: ProductDocument) => doc.link); // Filter out docs without links
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to parse pdfs JSON for ${name}: ${e.message}`);
+      }
+    }
+
     const productData: Partial<Product> = {
       name: name.trim(),
       slug: existingProduct?.slug || slug,
@@ -863,6 +880,7 @@ export class ImportExportService {
       stock: 0, // Default stock to 0, can be updated separately
       status: ProductStatus.PUBLISHED, // Publish by default in V2 import
       categoryId: category?.id || undefined,
+      documents,
     };
 
     let product: Product;

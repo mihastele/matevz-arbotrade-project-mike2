@@ -69,7 +69,7 @@ const stockQuantity = computed(() => {
   return product.value?.stock || 0
 })
 
-// Documents (PDFs from images or pdfUrls)
+// Documents (PDFs from images or documents array)
 const documents = computed(() => {
   if (!product.value) return []
   
@@ -88,12 +88,12 @@ const documents = computed(() => {
       })
   }
   
-  // Get PDFs from pdfUrls array
-  if (product.value.pdfUrls) {
-    product.value.pdfUrls.forEach(url => {
+  // Get documents from the new documents array (supports external URLs with names)
+  if (product.value.documents) {
+    product.value.documents.forEach(doc => {
       docs.push({
-        url,
-        name: getFileNameFromUrl(url),
+        url: doc.link,
+        name: doc.name || getFileNameFromUrl(doc.link),
         type: 'pdf'
       })
     })

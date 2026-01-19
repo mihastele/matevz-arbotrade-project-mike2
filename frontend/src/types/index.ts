@@ -66,6 +66,11 @@ export interface ProductVariant {
   isActive: boolean
 }
 
+export interface ProductDocument {
+  name: string
+  link: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -98,7 +103,7 @@ export interface Product {
   attributes?: Record<string, string>
   tags?: string[]
   videoUrls?: string[]
-  pdfUrls?: string[]
+  documents?: ProductDocument[]
   previewLinks?: string[]
   createdAt: string
   updatedAt: string

@@ -45,6 +45,16 @@ export class CreateProductImageDto {
   isPrimary?: boolean;
 }
 
+export class CreateProductDocumentDto {
+  @ApiProperty({ description: 'Document name' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'Document link - external URL or local storage path' })
+  @IsString()
+  link: string;
+}
+
 export class CreateProductVariantDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -211,11 +221,12 @@ export class CreateProductDto {
   @IsString({ each: true })
   videoUrls?: string[];
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({ type: [CreateProductDocumentDto] })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  pdfUrls?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductDocumentDto)
+  documents?: CreateProductDocumentDto[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()

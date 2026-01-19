@@ -16,6 +16,11 @@ import { ProductVariant } from './product-variant.entity';
 import { CartItem } from '../../cart/entities/cart-item.entity';
 import { OrderItem } from '../../orders/entities/order-item.entity';
 
+export interface ProductDocument {
+  name: string;
+  link: string; // Can be external URL or local storage path like /uploads/documents/xxx.pdf
+}
+
 export enum ProductStatus {
   DRAFT = 'draft',
   PUBLISHED = 'published',
@@ -132,8 +137,8 @@ export class Product {
   @Column({ type: 'simple-array', nullable: true })
   videoUrls: string[];
 
-  @Column({ type: 'simple-array', nullable: true })
-  pdfUrls: string[];
+  @Column({ type: 'jsonb', nullable: true })
+  documents: ProductDocument[];
 
   @Column({ type: 'simple-array', nullable: true })
   previewLinks: string[];
