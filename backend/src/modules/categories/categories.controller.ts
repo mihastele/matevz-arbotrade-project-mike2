@@ -20,7 +20,7 @@ import { UserRole } from '../users/entities/user.entity';
 @ApiTags('categories')
 @Controller('categories')
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) {}
+  constructor(private readonly categoriesService: CategoriesService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -59,6 +59,12 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Get child categories' })
   findChildren(@Param('id') id: string) {
     return this.categoriesService.findChildren(id);
+  }
+
+  @Get(':id/descendants')
+  @ApiOperation({ summary: 'Get all descendant category IDs (including self)' })
+  getDescendantIds(@Param('id') id: string) {
+    return this.categoriesService.getDescendantIds(id);
   }
 
   @Patch(':id')

@@ -7,6 +7,7 @@ import { ProductVariant } from './entities/product-variant.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
+import { CategoriesService } from '../categories/categories.service';
 
 @Injectable()
 export class ProductsService {
@@ -17,6 +18,7 @@ export class ProductsService {
     private imagesRepository: Repository<ProductImage>,
     @InjectRepository(ProductVariant)
     private variantsRepository: Repository<ProductVariant>,
+    private categoriesService: CategoriesService,
   ) { }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -90,9 +92,14 @@ export class ProductsService {
       );
     }
 
-    // Category filter
+    // Category filter - include all descendant categories
     if (categoryId) {
-      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+      const descendantIds = await this.categoriesService.getDescendantIds(categoryId);
+      if (descendantIds.length > 0) {
+        queryBuilder.andWhere('product.categoryId IN (:...descendantIds)', { descendantIds });
+      } else {
+        queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+      }
     }
 
     if (categoryIds && categoryIds.length > 0) {

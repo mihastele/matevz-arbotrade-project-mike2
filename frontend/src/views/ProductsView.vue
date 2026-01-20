@@ -15,7 +15,6 @@ const { t } = useI18n()
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
-const expandedCategory = ref<string | null>(null)
 const loading = ref(true)
 const pagination = ref({
   page: 1,
@@ -46,23 +45,20 @@ const topLevelCategories = computed(() => {
   return categories.value.filter(cat => !cat.parentId && cat.isActive !== false)
 })
 
-// Flatten all categories for the filter dropdown
-const flatCategories = computed(() => {
-  const flat: Category[] = []
-  const flatten = (cats: Category[]) => {
-    cats.forEach(cat => {
-      flat.push(cat)
-      if (cat.children?.length) {
-        flatten(cat.children)
-      }
-    })
-  }
-  flatten(categories.value)
-  return flat
-})
-
 const flatCategoryOptions = computed(() => {
-  return flatCategories.value.map(c => ({ value: c.id, label: c.name }))
+  const options: { value: string; label: string }[] = []
+  
+  const processCategory = (cat: Category, level: number) => {
+    const prefix = level === 0 ? '' : level === 1 ? '> ' : '>> '
+    options.push({ value: cat.id, label: prefix + cat.name })
+    if (cat.children?.length) {
+      cat.children.forEach(child => processCategory(child, level + 1))
+    }
+  }
+  
+  // Process only top-level categories (those with children defined from tree)
+  categories.value.forEach(cat => processCategory(cat, 0))
+  return options
 })
 
 async function loadProducts() {
@@ -107,15 +103,6 @@ function selectCategory(catId: string) {
   pagination.value.page = 1
   updateUrl()
   loadProducts()
-  expandedCategory.value = null
-}
-
-function toggleCategoryExpand(catId: string) {
-  if (expandedCategory.value === catId) {
-    expandedCategory.value = null
-  } else {
-    expandedCategory.value = catId
-  }
 }
 
 function handleSortChange(value: string) {
@@ -203,41 +190,40 @@ watch(() => route.query.category, (newCategory) => {
     <div class="bg-white border-b border-secondary-200 shadow-sm">
       <div class="container-custom">
         <div class="py-3">
-          <!-- Category Pills -->
-          <div class="flex flex-wrap gap-2">
+          <!-- Category Navigation - Boxy Design -->
+          <div class="flex flex-wrap gap-1">
             <!-- All Products -->
             <button
               @click="selectCategory('')"
               :class="[
-                'px-4 py-2 rounded-full text-sm font-medium transition-all',
+                'px-4 py-2 text-sm font-medium transition-all border',
                 !categoryId
-                  ? 'bg-primary-600 text-white shadow-md'
-                  : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-secondary-700 border-secondary-200 hover:bg-secondary-50 hover:border-secondary-300'
               ]"
             >
               {{ t('productsPage.allCategories') }}
             </button>
 
-            <!-- Category buttons with optional dropdowns -->
+            <!-- Category buttons with hover dropdowns -->
             <div 
               v-for="category in topLevelCategories" 
               :key="category.id"
-              class="relative"
+              class="relative group"
             >
               <button
-                @click="category.children?.length ? toggleCategoryExpand(category.id) : selectCategory(category.id)"
+                @click="selectCategory(category.id)"
                 :class="[
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1',
-                  categoryId === category.id || expandedCategory === category.id
-                    ? 'bg-primary-600 text-white shadow-md'
-                    : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
+                  'px-4 py-2 text-sm font-medium transition-all border flex items-center gap-1',
+                  categoryId === category.id
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white text-secondary-700 border-secondary-200 hover:bg-secondary-50 hover:border-secondary-300'
                 ]"
               >
                 {{ category.name }}
                 <svg 
                   v-if="category.children?.length"
-                  class="w-4 h-4 transition-transform"
-                  :class="{ 'rotate-180': expandedCategory === category.id }"
+                  class="w-4 h-4 transition-transform group-hover:rotate-180"
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -246,55 +232,65 @@ watch(() => route.query.category, (newCategory) => {
                 </svg>
               </button>
 
-              <!-- Subcategory Dropdown -->
-              <Transition
-                enter-active-class="transition duration-200 ease-out"
-                enter-from-class="opacity-0 -translate-y-2"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition duration-150 ease-in"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 -translate-y-2"
+              <!-- Hover Dropdown with Subcategories and Sub-subcategories -->
+              <div
+                v-if="category.children?.length"
+                class="absolute left-0 top-full mt-0 bg-white shadow-lg border border-secondary-200 min-w-64 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
               >
-                <div
-                  v-if="expandedCategory === category.id && category.children?.length"
-                  class="absolute left-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-secondary-100 py-2 min-w-48 z-50"
+                <!-- View all in this category -->
+                <button
+                  @click="selectCategory(category.id)"
+                  class="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium border-b border-secondary-100"
                 >
-                  <!-- View all in this category -->
-                  <button
-                    @click="selectCategory(category.id)"
-                    class="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium"
-                  >
-                    {{ t('productsPage.viewAll') }} {{ category.name }}
-                  </button>
-                  <hr class="my-2 border-secondary-100" />
-                  <!-- Subcategories -->
-                  <button
+                  {{ t('productsPage.viewAll') }} {{ category.name }}
+                </button>
+                
+                <!-- Subcategories with sub-subcategories -->
+                <div class="max-h-80 overflow-y-auto">
+                  <div
                     v-for="child in category.children"
                     :key="child.id"
-                    @click="selectCategory(child.id)"
-                    :class="[
-                      'w-full text-left px-4 py-2 text-sm transition-colors',
-                      categoryId === child.id
-                        ? 'bg-primary-50 text-primary-700 font-medium'
-                        : 'text-secondary-700 hover:bg-secondary-50'
-                    ]"
+                    class="border-b border-secondary-50 last:border-b-0"
                   >
-                    {{ child.name }}
-                  </button>
+                    <!-- Subcategory -->
+                    <button
+                      @click="selectCategory(child.id)"
+                      :class="[
+                        'w-full text-left px-4 py-2 text-sm transition-colors font-medium',
+                        categoryId === child.id
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-secondary-800 hover:bg-secondary-50'
+                      ]"
+                    >
+                      {{ child.name }}
+                    </button>
+                    
+                    <!-- Sub-subcategories (3rd level) -->
+                    <div v-if="child.children?.length" class="bg-secondary-50">
+                      <button
+                        v-for="subChild in child.children"
+                        :key="subChild.id"
+                        @click="selectCategory(subChild.id)"
+                        :class="[
+                          'w-full text-left px-6 py-1.5 text-xs transition-colors',
+                          categoryId === subChild.id
+                            ? 'bg-primary-100 text-primary-700 font-medium'
+                            : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-800'
+                        ]"
+                      >
+                        {{ subChild.name }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </Transition>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Click-outside handler for dropdowns -->
-    <div 
-      v-if="expandedCategory"
-      class="fixed inset-0 z-40"
-      @click="expandedCategory = null"
-    />
+    <!-- Click-outside handler removed - using hover instead -->
 
     <div class="py-8">
       <div class="container-custom">

@@ -10,7 +10,7 @@ export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private categoriesRepository: TreeRepository<Category>,
-  ) {}
+  ) { }
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const { parentId, ...categoryData } = createCategoryDto;
@@ -94,6 +94,12 @@ export class CategoriesService {
   async remove(id: string): Promise<void> {
     const category = await this.findOne(id);
     await this.categoriesRepository.remove(category);
+  }
+
+  async getDescendantIds(categoryId: string): Promise<string[]> {
+    const category = await this.findOne(categoryId);
+    const descendants = await this.categoriesRepository.findDescendants(category);
+    return descendants.map(c => c.id);
   }
 
   private generateSlug(name: string): string {
