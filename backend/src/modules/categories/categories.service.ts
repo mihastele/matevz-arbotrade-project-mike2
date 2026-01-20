@@ -38,7 +38,31 @@ export class CategoriesService {
   }
 
   async findAllTree(): Promise<Category[]> {
-    return this.categoriesRepository.findTrees();
+    // Fetch all categories with their basic data
+    const allCategories = await this.categoriesRepository.find({
+      where: { isActive: true },
+      order: { sortOrder: 'ASC', name: 'ASC' },
+    });
+
+    // Build a map for fast lookup
+    const categoryMap = new Map<string, Category>();
+    allCategories.forEach(cat => {
+      cat.children = []; // Initialize children array
+      categoryMap.set(cat.id, cat);
+    });
+
+    // Build tree structure by assigning children to parents
+    const rootCategories: Category[] = [];
+    allCategories.forEach(cat => {
+      if (cat.parentId && categoryMap.has(cat.parentId)) {
+        const parent = categoryMap.get(cat.parentId)!;
+        parent.children!.push(cat);
+      } else if (!cat.parentId) {
+        rootCategories.push(cat);
+      }
+    });
+
+    return rootCategories;
   }
 
   async findOne(id: string): Promise<Category> {
