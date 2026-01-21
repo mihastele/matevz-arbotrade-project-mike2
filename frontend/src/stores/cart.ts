@@ -131,6 +131,7 @@ export const useCartStore = defineStore('cart', () => {
     updateItem,
     removeItem,
     clearCart,
+    resetLocalCart,
     mergeCart,
   }
 })

@@ -121,11 +121,13 @@ async function placeOrder() {
       // For now, redirect to a success page
       console.log('Payment intent created:', clientSecret)
       toast.success('Order placed successfully!')
-      await cartStore.clearCart()
+      // Use resetLocalCart since backend already cleared the cart during order creation
+      cartStore.resetLocalCart()
       router.push(`/order-confirmation/${order.id}`)
     } else {
       toast.success('Order placed successfully!')
-      await cartStore.clearCart()
+      // Use resetLocalCart since backend already cleared the cart during order creation
+      cartStore.resetLocalCart()
       router.push(`/order-confirmation/${order.id}`)
     }
   } catch (error: unknown) {
