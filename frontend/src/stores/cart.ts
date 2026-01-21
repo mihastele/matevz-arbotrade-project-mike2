@@ -77,16 +77,33 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function clearCart() {
+    // Immediately clear local state (optimistic update)
+    cart.value = null
+
     loading.value = true
     try {
       await cartApi.clear()
-      cart.value = null
+      // Generate a new guest token so we get a fresh cart next time
+      localStorage.removeItem('guestToken')
     } catch (error) {
-      showToast({ type: 'error', message: 'Failed to clear cart' })
-      throw error
+      // If clear fails, we should refetch to get the actual state
+      // The cart might already be empty on the server
+      console.error('Failed to clear cart on server:', error)
+      try {
+        await fetchCart()
+      } catch {
+        // If fetching also fails, just ensure local state is cleared
+        cart.value = null
+      }
     } finally {
       loading.value = false
     }
+  }
+
+  // Simple local-only reset (useful after order placement when backend already cleared)
+  function resetLocalCart() {
+    cart.value = null
+    localStorage.removeItem('guestToken')
   }
 
   async function mergeCart() {
