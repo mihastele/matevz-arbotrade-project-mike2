@@ -254,4 +254,65 @@ export default {
     yes: 'Yes',
     no: 'No',
   },
+
+  // Product Detail
+  productDetail: {
+    home: 'Home',
+    pdfDocuments: 'PDF Documents',
+    pdfDocument: 'PDF Document',
+    videos: 'Videos',
+  },
+
+  // Checkout
+  checkout: {
+    title: 'Checkout',
+    shippingInfo: 'Shipping Information',
+    paymentMethod: 'Payment Method',
+    billingSameAsShipping: 'Billing address same as shipping',
+    billingAddress: 'Billing Address',
+    payWithStripe: 'Pay securely with Stripe',
+    orderSummary: 'Order Summary',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    email: 'Email',
+    phone: 'Phone',
+    address: 'Address',
+    city: 'City',
+    postalCode: 'Postal Code',
+    country: 'Country',
+    processing: 'Processing...',
+    placeOrder: 'Place Order',
+    creditCard: 'Credit Card',
+  },
+
+  // Order Confirmation
+  orderConfirmation: {
+    orderSummary: 'Order Summary',
+    subtotal: 'Subtotal',
+    shipping: 'Shipping',
+    tax: 'Tax',
+    total: 'Total',
+    orderNotFound: 'Order not found',
+  },
+
+  // Category Page
+  categoryPage: {
+    noProducts: 'No products found',
+    home: 'Home',
+  },
+
+  // Not Found
+  notFound: {
+    title: 'Page Not Found',
+    message: 'The page you are looking for does not exist.',
+    goHome: 'Go to Home',
+  },
+
+  // Category Mobile Menu
+  categoryMenu: {
+    title: 'Categories',
+    viewAll: 'View All',
+    noCategories: 'No categories available',
+    browseAll: 'Browse All Products',
+  },
 }

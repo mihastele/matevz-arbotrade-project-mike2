@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import { productsApi } from '@/api/products'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import type { Product, ProductVariant } from '@/types'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -234,9 +237,9 @@ watch(() => route.params.slug, loadProduct)
           <!-- Breadcrumb -->
           <nav class="text-sm mb-4">
             <ol class="flex items-center space-x-2 text-secondary-500">
-              <li><RouterLink to="/" class="hover:text-primary-600">Home</RouterLink></li>
+              <li><RouterLink to="/" class="hover:text-primary-600">{{ t('productDetail.home') }}</RouterLink></li>
               <li>/</li>
-              <li><RouterLink to="/products" class="hover:text-primary-600">Products</RouterLink></li>
+              <li><RouterLink to="/products" class="hover:text-primary-600">{{ t('nav.products') }}</RouterLink></li>
               <li v-if="product.category">/</li>
               <li v-if="product.category">
                 <RouterLink 
@@ -279,14 +282,14 @@ watch(() => route.params.slug, loadProduct)
               class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
             >
               <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-              In Stock ({{ stockQuantity }} available)
+              {{ t('products.inStock') }} ({{ stockQuantity }})
             </span>
             <span 
               v-else
               class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"
             >
               <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-              Out of Stock
+              {{ t('products.outOfStock') }}
             </span>
           </div>
 
@@ -331,7 +334,7 @@ watch(() => route.params.slug, loadProduct)
               class="flex-1"
               @click="addToCart"
             >
-              Add to Cart
+              {{ t('products.addToCart') }}
             </BaseButton>
           </div>
 
@@ -347,7 +350,7 @@ watch(() => route.params.slug, loadProduct)
                 ]"
                 @click="activeTab = 'description'"
               >
-                Description
+                {{ t('products.description') }}
               </button>
               <!-- <button
                 :class="[
@@ -370,7 +373,7 @@ watch(() => route.params.slug, loadProduct)
                 ]"
                 @click="activeTab = 'documents'"
               >
-                Documents
+                {{ t('productDetail.pdfDocuments') }}
               </button>
             </div>
 
@@ -384,7 +387,7 @@ watch(() => route.params.slug, loadProduct)
               <div v-else-if="activeTab === 'documents'" class="space-y-6">
                 <!-- PDF Documents -->
                 <div v-if="documents.length > 0">
-                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">PDF Documents</h3>
+                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">{{ t('productDetail.pdfDocuments') }}</h3>
                   <div class="space-y-2">
                     <a
                       v-for="(doc, index) in documents"
@@ -398,7 +401,7 @@ watch(() => route.params.slug, loadProduct)
                       </svg>
                       <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-secondary-900 truncate">{{ doc.name }}</p>
-                        <p class="text-xs text-secondary-500">PDF Document</p>
+                        <p class="text-xs text-secondary-500">{{ t('productDetail.pdfDocument') }}</p>
                       </div>
                       <svg class="w-5 h-5 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -409,7 +412,7 @@ watch(() => route.params.slug, loadProduct)
                 
                 <!-- Videos -->
                 <div v-if="videos.length > 0">
-                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">Videos</h3>
+                  <h3 class="text-sm font-semibold text-secondary-900 mb-3">{{ t('productDetail.videos') }}</h3>
                   <div class="grid gap-4">
                     <div 
                       v-for="(videoUrl, index) in videos" 

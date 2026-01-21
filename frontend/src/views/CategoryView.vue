@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { productsApi } from '@/api/products'
 import { categoriesApi } from '@/api/categories'
 import ProductCard from '@/components/product/ProductCard.vue'
 import type { Product, Category } from '@/types'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const category = ref<Category | null>(null)
@@ -60,11 +63,11 @@ onMounted(() => {
     <nav class="mb-6">
       <ol class="flex items-center text-sm text-secondary-500">
         <li>
-          <RouterLink to="/" class="hover:text-primary-600">Home</RouterLink>
+          <RouterLink to="/" class="hover:text-primary-600">{{ t('categoryPage.home') }}</RouterLink>
         </li>
         <li class="mx-2">/</li>
         <li>
-          <RouterLink to="/products" class="hover:text-primary-600">Products</RouterLink>
+          <RouterLink to="/products" class="hover:text-primary-600">{{ t('nav.products') }}</RouterLink>
         </li>
         <li class="mx-2">/</li>
         <li class="text-secondary-900">{{ category?.name || 'Category' }}</li>
@@ -108,17 +111,17 @@ onMounted(() => {
             class="px-4 py-2 border border-secondary-300 rounded-lg disabled:opacity-50"
             @click="goToPage(page - 1)"
           >
-            Previous
+            {{ t('common.previous') }}
           </button>
           <span class="px-4 py-2 text-secondary-600">
-            Page {{ page }} of {{ totalPages }}
+            {{ t('productsPage.page') }} {{ page }} {{ t('productsPage.of') }} {{ totalPages }}
           </span>
           <button
             :disabled="page === totalPages"
             class="px-4 py-2 border border-secondary-300 rounded-lg disabled:opacity-50"
             @click="goToPage(page + 1)"
           >
-            Next
+            {{ t('common.next') }}
           </button>
         </div>
       </div>
@@ -129,7 +132,7 @@ onMounted(() => {
       <svg class="w-16 h-16 mx-auto text-secondary-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
-      <h2 class="text-lg font-semibold text-secondary-900 mb-2">No products found</h2>
+      <h2 class="text-lg font-semibold text-secondary-900 mb-2">{{ t('categoryPage.noProducts') }}</h2>
       <p class="text-secondary-500">There are no products in this category yet.</p>
     </div>
   </div>

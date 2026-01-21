@@ -31,6 +31,14 @@ const sortOrder = ref<'ASC' | 'DESC'>('DESC')
 const minPrice = ref('')
 const maxPrice = ref('')
 
+// Mobile category dropdown state
+const expandedMobileCategory = ref<string | null>(null)
+
+function toggleMobileDropdown(catId: string, event: Event) {
+  event.stopPropagation()
+  expandedMobileCategory.value = expandedMobileCategory.value === catId ? null : catId
+}
+
 const sortOptions = computed(() => [
   { value: 'createdAt-DESC', label: t('productsPage.sort.newestFirst') },
   { value: 'createdAt-ASC', label: t('productsPage.sort.oldestFirst') },
@@ -190,8 +198,8 @@ watch(() => route.query.category, (newCategory) => {
     <div class="bg-white border-b border-secondary-200 shadow-sm">
       <div class="container-custom">
         <div class="py-3">
-          <!-- Category Navigation - Boxy Design -->
-          <div class="flex flex-wrap gap-1">
+          <!-- Desktop: Horizontal category buttons with hover dropdowns -->
+          <div class="hidden md:flex flex-wrap gap-1">
             <!-- All Products -->
             <button
               @click="selectCategory('')"
@@ -205,7 +213,7 @@ watch(() => route.query.category, (newCategory) => {
               {{ t('productsPage.allCategories') }}
             </button>
 
-            <!-- Category buttons with hover dropdowns -->
+            <!-- Category buttons with hover dropdowns (Desktop) -->
             <div 
               v-for="category in topLevelCategories" 
               :key="category.id"
@@ -232,27 +240,23 @@ watch(() => route.query.category, (newCategory) => {
                 </svg>
               </button>
 
-              <!-- Hover Dropdown with Subcategories and Sub-subcategories -->
+              <!-- Hover Dropdown (Desktop only) -->
               <div
                 v-if="category.children?.length"
                 class="absolute left-0 top-full mt-0 bg-white shadow-lg border border-secondary-200 min-w-64 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
               >
-                <!-- View all in this category -->
                 <button
                   @click="selectCategory(category.id)"
                   class="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium border-b border-secondary-100"
                 >
                   {{ t('productsPage.viewAll') }} {{ category.name }}
                 </button>
-                
-                <!-- Subcategories with sub-subcategories -->
                 <div class="max-h-80 overflow-y-auto">
                   <div
                     v-for="child in category.children"
                     :key="child.id"
                     class="border-b border-secondary-50 last:border-b-0"
                   >
-                    <!-- Subcategory -->
                     <button
                       @click="selectCategory(child.id)"
                       :class="[
@@ -264,8 +268,6 @@ watch(() => route.query.category, (newCategory) => {
                     >
                       {{ child.name }}
                     </button>
-                    
-                    <!-- Sub-subcategories (3rd level) -->
                     <div v-if="child.children?.length" class="bg-secondary-50">
                       <button
                         v-for="subChild in child.children"
@@ -283,6 +285,80 @@ watch(() => route.query.category, (newCategory) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile: Full-width stacked categories with dropdown buttons -->
+          <div class="md:hidden space-y-1">
+            <!-- All Products -->
+            <button
+              @click="selectCategory('')"
+              :class="[
+                'w-full px-4 py-3 text-sm font-medium transition-all border text-left',
+                !categoryId
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-secondary-700 border-secondary-200'
+              ]"
+            >
+              {{ t('productsPage.allCategories') }}
+            </button>
+
+            <!-- Category items with dropdown toggle -->
+            <div v-for="category in topLevelCategories" :key="category.id">
+              <div class="flex border border-secondary-200 bg-white">
+                <!-- Category name (click to select) -->
+                <button
+                  @click="selectCategory(category.id)"
+                  :class="[
+                    'flex-1 px-4 py-3 text-sm font-medium text-left transition-colors',
+                    categoryId === category.id
+                      ? 'bg-primary-600 text-white'
+                      : 'text-secondary-700 hover:bg-secondary-50'
+                  ]"
+                >
+                  {{ category.name }}
+                </button>
+                <!-- Dropdown toggle button (only if has children) -->
+                <button
+                  v-if="category.children?.length"
+                  @click="toggleMobileDropdown(category.id, $event)"
+                  :class="[
+                    'px-3 border-l border-secondary-200 transition-colors flex items-center justify-center',
+                    expandedMobileCategory === category.id
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-secondary-500 hover:bg-secondary-50'
+                  ]"
+                >
+                  <svg 
+                    :class="['w-5 h-5 transition-transform', expandedMobileCategory === category.id ? 'rotate-180' : '']"
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Mobile dropdown content -->
+              <div 
+                v-if="category.children?.length && expandedMobileCategory === category.id"
+                class="bg-secondary-50 border-x border-b border-secondary-200"
+              >
+                <button
+                  v-for="child in category.children"
+                  :key="child.id"
+                  @click="selectCategory(child.id)"
+                  :class="[
+                    'w-full text-left px-6 py-2.5 text-sm transition-colors border-b border-secondary-100 last:border-b-0',
+                    categoryId === child.id
+                      ? 'bg-primary-100 text-primary-700 font-medium'
+                      : 'text-secondary-700 hover:bg-secondary-100'
+                  ]"
+                >
+                  {{ child.name }}
+                </button>
               </div>
             </div>
           </div>

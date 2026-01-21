@@ -254,4 +254,65 @@ export default {
     yes: 'Da',
     no: 'Ne',
   },
+
+  // Product Detail
+  productDetail: {
+    home: 'Domov',
+    pdfDocuments: 'PDF Dokumenti',
+    pdfDocument: 'PDF Dokument',
+    videos: 'Videi',
+  },
+
+  // Checkout
+  checkout: {
+    title: 'Blagajna',
+    shippingInfo: 'Podatki za dostavo',
+    paymentMethod: 'Način plačila',
+    billingSameAsShipping: 'Naslov za račun je enak naslovu za dostavo',
+    billingAddress: 'Naslov za račun',
+    payWithStripe: 'Plačaj varno s Stripe',
+    orderSummary: 'Povzetek naročila',
+    firstName: 'Ime',
+    lastName: 'Priimek',
+    email: 'E-pošta',
+    phone: 'Telefon',
+    address: 'Naslov',
+    city: 'Mesto',
+    postalCode: 'Poštna številka',
+    country: 'Država',
+    processing: 'Obdelovanje...',
+    placeOrder: 'Oddaj naročilo',
+    creditCard: 'Kreditna kartica',
+  },
+
+  // Order Confirmation
+  orderConfirmation: {
+    orderSummary: 'Povzetek naročila',
+    subtotal: 'Vmesni seštevek',
+    shipping: 'Dostava',
+    tax: 'Davek',
+    total: 'Skupaj',
+    orderNotFound: 'Naročilo ni bilo najdeno',
+  },
+
+  // Category Page
+  categoryPage: {
+    noProducts: 'Ni izdelkov',
+    home: 'Domov',
+  },
+
+  // Not Found
+  notFound: {
+    title: 'Stran ni bila najdena',
+    message: 'Stran, ki jo iščete, ne obstaja.',
+    goHome: 'Pojdi na domačo stran',
+  },
+
+  // Category Mobile Menu
+  categoryMenu: {
+    title: 'Kategorije',
+    viewAll: 'Poglej vse',
+    noCategories: 'Ni kategorij',
+    browseAll: 'Prebrskaj vse izdelke',
+  },
 }

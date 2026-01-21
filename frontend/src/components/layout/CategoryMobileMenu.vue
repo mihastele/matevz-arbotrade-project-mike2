@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { Category } from '@/types'
+
+const { t } = useI18n()
 
 interface Props {
   categories: Category[]
@@ -36,7 +39,7 @@ const currentCategories = computed(() => {
 // Current title (category name or "Categories")
 const currentTitle = computed(() => {
   if (navigationStack.value.length === 0) {
-    return 'Categories'
+    return t('categoryMenu.title')
   }
   return navigationStack.value[navigationStack.value.length - 1].name
 })
@@ -157,7 +160,7 @@ function handleClose() {
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-                View All {{ currentCategory.name }}
+                {{ t('categoryMenu.viewAll') }} {{ currentCategory.name }}
               </RouterLink>
             </li>
 
@@ -185,7 +188,7 @@ function handleClose() {
 
             <!-- Empty state -->
             <li v-if="currentCategories.length === 0" class="px-4 py-8 text-center text-secondary-500">
-              No categories available
+              {{ t('categoryMenu.noCategories') }}
             </li>
           </ul>
         </Transition>
@@ -201,7 +204,7 @@ function handleClose() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
           </svg>
-          Browse All Products
+          {{ t('categoryMenu.browseAll') }}
         </RouterLink>
       </div>
     </div>
