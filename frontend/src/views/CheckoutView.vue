@@ -94,17 +94,18 @@ async function placeOrder() {
   loading.value = true
   
   try {
-    const billing = sameAsShipping.value ? shippingAddress.value : billingAddress.value
+    
+    // Extract only the fields expected by the backend AddressDto
+    const { email, ...shippingAddressData } = shippingAddress.value
+    // billingAddress doesn't have email, so we can use it directly
+    const billingAddressData = sameAsShipping.value 
+      ? shippingAddressData 
+      : billingAddress.value
     
     const orderData = {
-      shippingAddress: {
-        ...shippingAddress.value,
-        name: `${shippingAddress.value.firstName} ${shippingAddress.value.lastName}`
-      },
-      billingAddress: {
-        ...billing,
-        name: `${billing.firstName} ${billing.lastName}`
-      },
+      guestEmail: email, // Pass email separately for guest checkout
+      shippingAddress: shippingAddressData,
+      billingAddress: billingAddressData,
       notes: notes.value || undefined
     }
 
