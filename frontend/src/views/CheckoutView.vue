@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { ordersApi } from '@/api/orders'
 import { paymentsApi } from '@/api/payments'
+import { loadStripe, type Stripe, type StripeElements } from '@stripe/stripe-js'
 
 const router = useRouter()
+const route = useRoute()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const toast = useToast()
 
 const currentStep = ref(1)
 const loading = ref(false)
+const paymentLoading = ref(false)
+
+// Stripe
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+let stripe: Stripe | null = null
+let elements: StripeElements | null = null
+const clientSecret = ref<string | null>(null)
+const paymentIntentId = ref<string | null>(null)
+const paymentElementMounted = ref(false)
+const paymentElementContainer = ref<HTMLDivElement | null>(null)
 
 // Form data
 const shippingAddress = ref({
@@ -42,10 +53,10 @@ const billingAddress = ref({
 })
 
 const sameAsShipping = ref(true)
-const paymentMethod = ref('stripe')
 const notes = ref('')
 
 const errors = ref<Record<string, string>>({})
+const paymentError = ref('')
 
 const countryOptions = [
   { value: 'SI', label: 'Slovenia' },
@@ -58,6 +69,13 @@ const countryOptions = [
 
 const cart = computed(() => cartStore.cart)
 const isEmpty = computed(() => !cart.value?.items?.length)
+
+// Calculate total with tax (same as backend)
+const totalWithTax = computed(() => {
+  const subtotal = cartStore.subtotal
+  const tax = subtotal * 0.22
+  return subtotal + tax
+})
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('sl-SI', {
@@ -80,65 +98,146 @@ function validateShipping(): boolean {
   return Object.keys(errors.value).length === 0
 }
 
-function goToPayment() {
-  if (validateShipping()) {
-    currentStep.value = 2
-  }
-}
-
-function goBack() {
-  currentStep.value = 1
-}
-
-async function placeOrder() {
+async function goToPayment() {
+  if (!validateShipping()) return
+  
   loading.value = true
+  paymentError.value = ''
   
   try {
-    
-    // Extract only the fields expected by the backend AddressDto
+    // Create payment intent from cart
     const { email, ...shippingAddressData } = shippingAddress.value
-    // billingAddress doesn't have email, so we can use it directly
     const billingAddressData = sameAsShipping.value 
       ? shippingAddressData 
       : billingAddress.value
-    
-    const orderData = {
-      guestEmail: email, // Pass email separately for guest checkout
+
+    const checkoutData = {
+      guestEmail: email,
       shippingAddress: shippingAddressData,
       billingAddress: billingAddressData,
-      notes: notes.value || undefined
+      notes: notes.value || undefined,
     }
 
-    const response = await ordersApi.create(orderData)
-    const order = response
-
-    if (paymentMethod.value === 'stripe') {
-      // Create payment intent
-      const paymentResponse = await paymentsApi.createPaymentIntent(order.id)
-      const { clientSecret } = paymentResponse
-      
-      // In production, integrate with Stripe.js here
-      // For now, redirect to a success page
-      console.log('Payment intent created:', clientSecret)
-      toast.success('Order placed successfully!')
-      // Use resetLocalCart since backend already cleared the cart during order creation
-      cartStore.resetLocalCart()
-      router.push(`/order-confirmation/${order.id}`)
-    } else {
-      toast.success('Order placed successfully!')
-      // Use resetLocalCart since backend already cleared the cart during order creation
-      cartStore.resetLocalCart()
-      router.push(`/order-confirmation/${order.id}`)
-    }
+    const response = await paymentsApi.createCheckoutIntent(checkoutData)
+    clientSecret.value = response.clientSecret
+    paymentIntentId.value = response.paymentIntentId
+    
+    currentStep.value = 2
+    
+    // Mount Stripe Payment Element after step change
+    await nextTick()
+    await mountPaymentElement()
+    
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || 'Failed to place order')
+    toast.error(err.response?.data?.message || 'Failed to initialize payment')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
+async function mountPaymentElement() {
+  if (!clientSecret.value || !stripePublishableKey) {
+    paymentError.value = 'Payment configuration missing'
+    return
+  }
+
+  if (!stripe) {
+    stripe = await loadStripe(stripePublishableKey)
+  }
+
+  if (!stripe) {
+    paymentError.value = 'Failed to load payment processor'
+    return
+  }
+
+  // Create elements with the client secret
+  elements = stripe.elements({
+    clientSecret: clientSecret.value,
+    appearance: {
+      theme: 'stripe',
+      variables: {
+        colorPrimary: '#16a34a', // Match your primary green color
+      },
+    },
+  })
+
+  // Create and mount the Payment Element
+  const paymentElement = elements.create('payment', {
+    layout: 'tabs',
+  })
+  
+  if (paymentElementContainer.value) {
+    paymentElement.mount(paymentElementContainer.value)
+    paymentElementMounted.value = true
+  }
+}
+
+function goBack() {
+  currentStep.value = 1
+  paymentError.value = ''
+}
+
+async function confirmPayment() {
+  if (!stripe || !elements || !clientSecret.value) {
+    paymentError.value = 'Payment not initialized'
+    return
+  }
+
+  paymentLoading.value = true
+  paymentError.value = ''
+
+  try {
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/order-confirmation?payment_intent=${paymentIntentId.value}`,
+        receipt_email: shippingAddress.value.email,
+      },
+    })
+
+    // If we get here, there was an error (successful payments redirect)
+    if (error) {
+      if (error.type === 'card_error' || error.type === 'validation_error') {
+        paymentError.value = error.message || 'Payment failed'
+      } else {
+        paymentError.value = 'An unexpected error occurred'
+      }
+    }
+  } catch (error) {
+    paymentError.value = 'Payment processing failed'
+  } finally {
+    paymentLoading.value = false
+  }
+}
+
+// Handle redirect back from Stripe
+async function handlePaymentRedirect() {
+  const paymentIntentParam = route.query.payment_intent as string
+  const redirectStatus = route.query.redirect_status as string
+  
+  if (paymentIntentParam && redirectStatus) {
+    if (redirectStatus === 'succeeded') {
+      // Clear cart and redirect to confirmation
+      cartStore.resetLocalCart()
+      toast.success('Payment successful!')
+      router.replace(`/order-confirmation?payment_intent=${paymentIntentParam}`)
+    } else if (redirectStatus === 'failed') {
+      // Clear cart on failure too (backend will clear via webhook)
+      cartStore.resetLocalCart()
+      toast.error('Payment failed. Please try again.')
+      router.replace('/cart')
+    }
+  }
+}
+
+onMounted(async () => {
+  // Check for payment redirect
+  if (route.query.payment_intent) {
+    await handlePaymentRedirect()
+    return
+  }
+
   if (isEmpty.value) {
     router.push('/cart')
     return
@@ -280,90 +379,30 @@ onMounted(() => {
 
           <!-- Step 2: Payment -->
           <div v-if="currentStep === 2" class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-lg font-semibold text-secondary-900 mb-6">Payment Method</h2>
+            <h2 class="text-lg font-semibold text-secondary-900 mb-6">Payment</h2>
 
-            <!-- Billing Address -->
+            <!-- Payment Error -->
+            <div v-if="paymentError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-red-700">{{ paymentError }}</p>
+            </div>
+
+            <!-- Stripe Payment Element Container -->
             <div class="mb-6">
-              <label class="flex items-center">
-                <input 
-                  v-model="sameAsShipping" 
-                  type="checkbox"
-                  class="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
-                />
-                <span class="ml-2 text-secondary-700">Billing address same as shipping</span>
-              </label>
-            </div>
-
-            <div v-if="!sameAsShipping" class="space-y-4 mb-6 p-4 bg-secondary-50 rounded-lg">
-              <h3 class="font-medium text-secondary-900">Billing Address</h3>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <BaseInput
-                  v-model="billingAddress.firstName"
-                  label="First Name"
-                  required
-                />
-                <BaseInput
-                  v-model="billingAddress.lastName"
-                  label="Last Name"
-                  required
-                />
+              <div ref="paymentElementContainer" class="min-h-[200px]">
+                <!-- Stripe Payment Element will be mounted here -->
+                <div v-if="!paymentElementMounted" class="flex items-center justify-center h-48">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
               </div>
-
-              <BaseInput
-                v-model="billingAddress.street"
-                label="Street Address"
-                required
-              />
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <BaseInput
-                  v-model="billingAddress.city"
-                  label="City"
-                  required
-                />
-                <BaseInput
-                  v-model="billingAddress.state"
-                  label="State/Region"
-                />
-                <BaseInput
-                  v-model="billingAddress.postalCode"
-                  label="Postal Code"
-                  required
-                />
-              </div>
-
-              <BaseSelect
-                v-model="billingAddress.country"
-                label="Country"
-                :options="countryOptions"
-                required
-              />
-            </div>
-
-            <!-- Payment Options -->
-            <div class="space-y-3 mb-6">
-              <label class="flex items-center p-4 border border-secondary-200 rounded-lg cursor-pointer hover:bg-secondary-50">
-                <input 
-                  v-model="paymentMethod" 
-                  type="radio" 
-                  value="stripe"
-                  class="w-4 h-4 text-primary-600 border-secondary-300 focus:ring-primary-500"
-                />
-                <span class="ml-3">
-                  <span class="font-medium text-secondary-900">Credit/Debit Card</span>
-                  <span class="block text-sm text-secondary-500">Pay securely with Stripe</span>
-                </span>
-              </label>
             </div>
 
             <!-- Actions -->
             <div class="flex flex-col-reverse sm:flex-row gap-4 pt-4">
-              <BaseButton variant="outline" @click="goBack">
+              <BaseButton variant="outline" @click="goBack" :disabled="paymentLoading">
                 Back to Shipping
               </BaseButton>
-              <BaseButton :loading="loading" @click="placeOrder">
-                Place Order - {{ formatPrice(cartStore.total) }}
+              <BaseButton :loading="paymentLoading" @click="confirmPayment">
+                Pay {{ formatPrice(totalWithTax) }}
               </BaseButton>
             </div>
           </div>

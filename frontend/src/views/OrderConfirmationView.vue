@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import type { Order } from '@/types'
@@ -7,6 +7,8 @@ import type { Order } from '@/types'
 const route = useRoute()
 const order = ref<Order | null>(null)
 const loading = ref(true)
+const isPaymentConfirmation = ref(false)
+const paymentIntentId = ref<string | null>(null)
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('sl-SI', {
@@ -23,14 +25,40 @@ function formatDate(date: string): string {
   })
 }
 
+// Check if this is a successful payment confirmation (order might still be processing)
+const showPaymentConfirmation = computed(() => {
+  return isPaymentConfirmation.value && !order.value
+})
+
 onMounted(async () => {
   try {
-    const id = route.params.id as string
-    const response = await ordersApi.getOne(id)
-    order.value = response
+    // Check if this is a payment redirect from Stripe
+    const paymentIntent = route.query.payment_intent as string
+    const orderId = route.params.id as string
+
+    if (paymentIntent) {
+      isPaymentConfirmation.value = true
+      paymentIntentId.value = paymentIntent
+      
+      // Try to find the order by payment intent
+      // (order might not exist yet if webhook hasn't processed)
+      try {
+        // For now, we'll just show a generic confirmation
+        // In a production app, you'd poll for the order or use webhooks
+        // to update the frontend in real-time
+        loading.value = false
+      } catch {
+        loading.value = false
+      }
+    } else if (orderId) {
+      const response = await ordersApi.getOne(orderId)
+      order.value = response
+      loading.value = false
+    } else {
+      loading.value = false
+    }
   } catch (error) {
     console.error('Failed to load order:', error)
-  } finally {
     loading.value = false
   }
 })
@@ -138,6 +166,57 @@ onMounted(async () => {
           class="btn-primary"
         >
           View Order Details
+        </RouterLink>
+        <RouterLink 
+          to="/products"
+          class="btn-outline"
+        >
+          Continue Shopping
+        </RouterLink>
+      </div>
+    </div>
+
+    <!-- Payment Confirmed (Order Processing) -->
+    <div v-else-if="showPaymentConfirmation" class="text-center">
+      <!-- Success Icon -->
+      <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+
+      <h1 class="text-3xl font-bold text-secondary-900 mb-2">Payment Confirmed!</h1>
+      <p class="text-xl text-secondary-600 mb-4">Your payment was successful.</p>
+      <p class="text-secondary-500 mb-8">
+        Your order is being processed and you will receive a confirmation email shortly.
+      </p>
+
+      <!-- Info -->
+      <div class="bg-secondary-50 rounded-lg p-6 text-left mb-8">
+        <h3 class="font-semibold text-secondary-900 mb-2">What's Next?</h3>
+        <ul class="text-secondary-600 space-y-2">
+          <li class="flex items-start">
+            <svg class="w-5 h-5 text-primary-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            You will receive an order confirmation email shortly
+          </li>
+          <li class="flex items-start">
+            <svg class="w-5 h-5 text-primary-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            We'll notify you when your order ships
+          </li>
+        </ul>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <RouterLink 
+          to="/account/orders"
+          class="btn-primary"
+        >
+          View My Orders
         </RouterLink>
         <RouterLink 
           to="/products"

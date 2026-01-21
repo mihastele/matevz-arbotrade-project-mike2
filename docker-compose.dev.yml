@@ -71,6 +71,7 @@ services:
     restart: unless-stopped
     environment:
       - VITE_API_URL=http://localhost:3000/api
+      - VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public

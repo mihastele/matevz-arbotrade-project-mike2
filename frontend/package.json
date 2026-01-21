@@ -10,6 +10,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^8.6.3",
     "@vue/language-core": "^3.2.0",
     "@vueuse/core": "^10.7.2",
     "axios": "^1.6.5",
