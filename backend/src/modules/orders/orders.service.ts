@@ -17,7 +17,7 @@ export class OrdersService {
     private orderItemsRepository: Repository<OrderItem>,
     private cartService: CartService,
     private productsService: ProductsService,
-  ) {}
+  ) { }
 
   async create(createOrderDto: CreateOrderDto, userId?: string, guestToken?: string): Promise<Order> {
     const cart = await this.cartService.getCart(userId, guestToken);
@@ -30,7 +30,7 @@ export class OrdersService {
     const orderNumber = this.generateOrderNumber();
 
     // Calculate totals
-    const subtotal = cart.subtotal;
+    const subtotal = Number(cart.subtotal);
     const tax = subtotal * 0.22; // 22% VAT (Slovenia)
     const shippingCost = createOrderDto.shippingCost || 0;
     const discount = createOrderDto.discount || 0;
@@ -147,7 +147,7 @@ export class OrdersService {
 
     if (updateDto.status) {
       order.status = updateDto.status;
-      
+
       // Update timestamps based on status
       if (updateDto.status === OrderStatus.SHIPPED) {
         order.shippedAt = new Date();
@@ -158,7 +158,7 @@ export class OrdersService {
 
     if (updateDto.paymentStatus) {
       order.paymentStatus = updateDto.paymentStatus;
-      
+
       if (updateDto.paymentStatus === PaymentStatus.PAID) {
         order.paidAt = new Date();
         order.status = OrderStatus.PROCESSING;

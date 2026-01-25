@@ -8,6 +8,8 @@ import {
   RawBodyRequest,
   Req,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Request } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -15,7 +17,7 @@ import { OptionalAuthGuard } from '../auth/guards/optional-auth.guard';
 import { CreateCheckoutIntentDto } from './dto/create-checkout-intent.dto';
 
 interface AuthenticatedRequest extends Request {
-  user?: { sub: string };
+  user?: { id: string };
 }
 
 @ApiTags('payments')
@@ -31,8 +33,14 @@ export class PaymentsController {
     @Body() dto: CreateCheckoutIntentDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    const userId = req.user?.sub;
+    const userId = req.user?.id;
     const guestToken = req.headers['x-guest-token'] as string | undefined;
+
+    try {
+      const logMsg = `[PaymentsController] createCheckoutIntent - UserID: ${userId}, GuestToken: ${guestToken}, ReqUser: ${JSON.stringify(req.user)}\n`;
+      fs.appendFileSync(path.join(process.cwd(), 'debug.txt'), logMsg);
+    } catch (e) { console.error(e); }
+
     return this.paymentsService.createCheckoutIntent(dto, userId, guestToken);
   }
 

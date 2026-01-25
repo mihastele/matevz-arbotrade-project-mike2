@@ -42,7 +42,9 @@ export class PaymentsService {
     }
 
     // Calculate totals (same logic as order creation)
-    const subtotal = cart.subtotal;
+    // IMPORTANT: subtotal from TypeORM is a string (decimal column), so we must convert to number
+    // otherwise + operator causes string concatenation (e.g. "100" + 22 = "10022")
+    const subtotal = Number(cart.subtotal);
     const tax = subtotal * 0.22; // 22% VAT (Slovenia)
     const shippingCost = 0; // Free shipping for now
     const total = subtotal + tax + shippingCost;
@@ -57,9 +59,9 @@ export class PaymentsService {
       billingAddress: JSON.stringify(dto.billingAddress || dto.shippingAddress),
       notes: dto.notes || '',
       shippingMethod: dto.shippingMethod || '',
-      subtotal: subtotal.toString(),
-      tax: tax.toString(),
-      total: total.toString(),
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      total: total.toFixed(2),
     };
 
     const paymentIntent = await this.stripe.paymentIntents.create({
