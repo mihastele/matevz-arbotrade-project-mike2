@@ -191,7 +191,7 @@ async function confirmPayment() {
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation?payment_intent=${paymentIntentId.value}`,
+        return_url: `${window.location.origin}/order-confirmation`,
         receipt_email: shippingAddress.value.email,
       },
     })

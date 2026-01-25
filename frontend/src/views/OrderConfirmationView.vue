@@ -33,7 +33,8 @@ const showPaymentConfirmation = computed(() => {
 onMounted(async () => {
   try {
     // Check if this is a payment redirect from Stripe
-    const paymentIntent = route.query.payment_intent as string
+    const paymentIntentQuery = route.query.payment_intent
+    const paymentIntent = Array.isArray(paymentIntentQuery) ? paymentIntentQuery[0] : paymentIntentQuery as string | null
     const orderId = route.params.id as string
 
     if (paymentIntent) {
