@@ -13,6 +13,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { MetakockaModule } from './modules/metakocka/metakocka.module';
+import { ConfigurationModule } from './modules/configuration/configuration.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { MetakockaModule } from './modules/metakocka/metakocka.module';
     PaymentsModule,
     UploadsModule,
     MetakockaModule,
+    ConfigurationModule,
   ],
 })
 export class AppModule { }

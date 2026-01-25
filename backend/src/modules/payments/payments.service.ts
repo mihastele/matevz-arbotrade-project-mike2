@@ -3,23 +3,43 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { OrdersService } from '../orders/orders.service';
 import { CartService } from '../cart/cart.service';
+import { ConfigurationService } from '../configuration/configuration.service';
 import { CreateCheckoutIntentDto } from './dto/create-checkout-intent.dto';
 
 @Injectable()
 export class PaymentsService {
-  private stripe: Stripe;
+  private stripe: Stripe | null = null;
+  private currentApiKey: string | null = null;
 
   constructor(
     private configService: ConfigService,
     private ordersService: OrdersService,
     private cartService: CartService,
-  ) {
-    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-    if (secretKey) {
+    private readonly configurationService: ConfigurationService,
+  ) { }
+
+  private async getStripe(): Promise<Stripe> {
+    // 1. Try DB
+    let secretKey = await this.configurationService.get('STRIPE_SECRET_KEY');
+
+    // 2. Fallback to Env
+    if (!secretKey) {
+      secretKey = this.configService.get<string>('STRIPE_SECRET_KEY') || null;
+    }
+
+    if (!secretKey) {
+      throw new BadRequestException('Stripe Secret Key not configured');
+    }
+
+    // Re-initialize if key changed or stripe instance missing
+    if (!this.stripe || this.currentApiKey !== secretKey) {
       this.stripe = new Stripe(secretKey, {
         apiVersion: '2023-10-16',
       });
+      this.currentApiKey = secretKey;
     }
+
+    return this.stripe;
   }
 
   /**
@@ -31,10 +51,7 @@ export class PaymentsService {
     userId?: string,
     guestToken?: string,
   ): Promise<{ clientSecret: string; paymentIntentId: string; amount: number }> {
-    if (!this.stripe) {
-      throw new BadRequestException('Payment service not configured');
-    }
-
+    const stripe = await this.getStripe();
     const cart = await this.cartService.getCart(userId, guestToken);
 
     if (!cart.items || cart.items.length === 0) {
@@ -42,8 +59,6 @@ export class PaymentsService {
     }
 
     // Calculate totals (same logic as order creation)
-    // IMPORTANT: subtotal from TypeORM is a string (decimal column), so we must convert to number
-    // otherwise + operator causes string concatenation (e.g. "100" + 22 = "10022")
     const subtotal = Number(cart.subtotal);
     const tax = subtotal * 0.22; // 22% VAT (Slovenia)
     const shippingCost = 0; // Free shipping for now
@@ -64,7 +79,7 @@ export class PaymentsService {
       total: total.toFixed(2),
     };
 
-    const paymentIntent = await this.stripe.paymentIntents.create({
+    const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: 'eur',
       automatic_payment_methods: {
@@ -85,19 +100,16 @@ export class PaymentsService {
    * Kept for backwards compatibility.
    */
   async createPaymentIntent(orderId: string): Promise<{ clientSecret: string }> {
-    if (!this.stripe) {
-      throw new BadRequestException('Payment service not configured');
-    }
-
+    const stripe = await this.getStripe();
     const order = await this.ordersService.findOne(orderId);
 
     if (order.paymentIntentId) {
       // Return existing payment intent
-      const existingIntent = await this.stripe.paymentIntents.retrieve(order.paymentIntentId);
+      const existingIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId);
       return { clientSecret: existingIntent.client_secret! };
     }
 
-    const paymentIntent = await this.stripe.paymentIntents.create({
+    const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(order.total * 100), // Convert to cents
       currency: 'eur',
       metadata: {
@@ -113,11 +125,15 @@ export class PaymentsService {
   }
 
   async handleWebhook(signature: string, payload: Buffer): Promise<void> {
-    if (!this.stripe) {
-      throw new BadRequestException('Payment service not configured');
+    const stripe = await this.getStripe(); // Ensure stripe is init, though we mainly need the client for internal stuff if any? Actually constructEvent is on stripe.webhooks
+
+    // DB First
+    let webhookSecret = await this.configurationService.get('STRIPE_WEBHOOK_SECRET');
+    // Env Fallback
+    if (!webhookSecret) {
+      webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || null;
     }
 
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!webhookSecret) {
       throw new BadRequestException('Webhook secret not configured');
     }
@@ -125,7 +141,7 @@ export class PaymentsService {
     let event: Stripe.Event;
 
     try {
-      event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
     } catch (err) {
       throw new BadRequestException(`Webhook signature verification failed`);
     }

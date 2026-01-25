@@ -75,7 +75,7 @@ export class CartService {
     let cartItem = cart.items?.find(
       (item) =>
         item.productId === addToCartDto.productId &&
-        item.variantId === addToCartDto.variantId
+        (item.variantId === addToCartDto.variantId || (!item.variantId && !addToCartDto.variantId))
     );
 
     if (cartItem) {
