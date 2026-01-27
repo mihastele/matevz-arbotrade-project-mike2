@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { paymentsApi } from '@/api/payments'
+import { configurationApi } from '@/api/configuration'
 import { loadStripe, type Stripe, type StripeElements } from '@stripe/stripe-js'
 
 const router = useRouter()
@@ -21,7 +22,7 @@ const loading = ref(false)
 const paymentLoading = ref(false)
 
 // Stripe
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+const stripePublishableKey = ref('')
 let stripe: Stripe | null = null
 let elements: StripeElements | null = null
 const clientSecret = ref<string | null>(null)
@@ -72,7 +73,7 @@ const isEmpty = computed(() => !cart.value?.items?.length)
 
 // Calculate total with tax (same as backend)
 const totalWithTax = computed(() => {
-  const subtotal = cartStore.subtotal
+  const subtotal = cartStore.subtotal || 0
   const tax = subtotal * 0.22
   return subtotal + tax
 })
@@ -137,13 +138,13 @@ async function goToPayment() {
 }
 
 async function mountPaymentElement() {
-  if (!clientSecret.value || !stripePublishableKey) {
+  if (!clientSecret.value || !stripePublishableKey.value) {
     paymentError.value = 'Payment configuration missing'
     return
   }
 
   if (!stripe) {
-    stripe = await loadStripe(stripePublishableKey)
+    stripe = await loadStripe(stripePublishableKey.value)
   }
 
   if (!stripe) {
@@ -232,6 +233,15 @@ async function handlePaymentRedirect() {
 }
 
 onMounted(async () => {
+  // Fetch Stripe publishable key from configuration
+  try {
+    const config = await configurationApi.getPublicStripeConfig()
+    stripePublishableKey.value = config.publishableKey || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+  } catch (error) {
+    // Fall back to env variable
+    stripePublishableKey.value = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+  }
+
   // Check for payment redirect
   if (route.query.payment_intent) {
     await handlePaymentRedirect()

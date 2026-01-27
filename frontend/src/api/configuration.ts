@@ -8,5 +8,10 @@ export const configurationApi = {
 
     async set(key: string, value: string): Promise<void> {
         await api.post('/configuration', { key, value })
+    },
+
+    async getPublicStripeConfig(): Promise<{ publishableKey: string }> {
+        const { data } = await api.get('/configuration/public/stripe')
+        return data
     }
 }
