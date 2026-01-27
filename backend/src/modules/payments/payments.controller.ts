@@ -8,8 +8,6 @@ import {
   RawBodyRequest,
   Req,
 } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 import { Request } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -35,11 +33,6 @@ export class PaymentsController {
   ) {
     const userId = req.user?.id;
     const guestToken = req.headers['x-guest-token'] as string | undefined;
-
-    try {
-      const logMsg = `[PaymentsController] createCheckoutIntent - UserID: ${userId}, GuestToken: ${guestToken}, ReqUser: ${JSON.stringify(req.user)}\n`;
-      fs.appendFileSync(path.join(process.cwd(), 'debug.txt'), logMsg);
-    } catch (e) { console.error(e); }
 
     return this.paymentsService.createCheckoutIntent(dto, userId, guestToken);
   }

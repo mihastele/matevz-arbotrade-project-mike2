@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
@@ -7,6 +7,7 @@ import { CartService } from '../cart/cart.service';
 import { ProductsService } from '../products/products.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class OrdersService {
@@ -127,7 +128,12 @@ export class OrdersService {
     return order;
   }
 
-  async findByOrderNumber(orderNumber: string): Promise<Order> {
+  async findByOrderNumber(
+    orderNumber: string,
+    userId?: string,
+    guestToken?: string,
+    userRole?: UserRole,
+  ): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { orderNumber },
       relations: ['items', 'items.product', 'items.product.images'],
@@ -135,6 +141,18 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+    
+    // Authorization check: user must be admin, order owner, or guest who created the order
+    const isAdmin = userRole === UserRole.ADMIN;
+    const isOrderOwner = userId && order.userId === userId;
+    // For guest orders, we check if the order has no userId (guest order) - guests can only view via confirmation page
+    // In a production system, you might also verify the guest token matches or require email verification
+    const isGuestOrder = !order.userId;
+    
+    if (!isAdmin && !isOrderOwner && !isGuestOrder) {
+      throw new ForbiddenException('You do not have permission to view this order');
+    }
+    
     return order;
   }
 

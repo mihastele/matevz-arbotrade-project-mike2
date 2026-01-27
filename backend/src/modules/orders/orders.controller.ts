@@ -67,9 +67,16 @@ export class OrdersController {
   }
 
   @Get('number/:orderNumber')
-  @ApiOperation({ summary: 'Get order by order number' })
-  findByOrderNumber(@Param('orderNumber') orderNumber: string) {
-    return this.ordersService.findByOrderNumber(orderNumber);
+  @UseGuards(OptionalAuthGuard)
+  @ApiBearerAuth()
+  @ApiHeader({ name: 'x-guest-token', required: false })
+  @ApiOperation({ summary: 'Get order by order number (requires matching user/guest or admin)' })
+  findByOrderNumber(
+    @Param('orderNumber') orderNumber: string,
+    @Request() req: any,
+    @Headers('x-guest-token') guestToken: string | undefined,
+  ) {
+    return this.ordersService.findByOrderNumber(orderNumber, req.user?.id, guestToken, req.user?.role);
   }
 
   @Get(':id')

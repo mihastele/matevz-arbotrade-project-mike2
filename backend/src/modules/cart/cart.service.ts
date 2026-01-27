@@ -1,8 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Cart } from './entities/cart.entity';
 import { CartItem } from './entities/cart-item.entity';
@@ -21,11 +19,6 @@ export class CartService {
   ) { }
 
   async getOrCreateCart(userId?: string, guestToken?: string): Promise<Cart> {
-    try {
-      const logMsg = `[CartService] getOrCreateCart - UserID: ${userId}, GuestToken: ${guestToken}\n`;
-      fs.appendFileSync(path.join(process.cwd(), 'debug.txt'), logMsg);
-    } catch (e) { console.error(e); }
-
     let cart: Cart | null = null;
 
     if (userId) {
