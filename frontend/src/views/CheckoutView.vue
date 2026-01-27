@@ -248,6 +248,11 @@ onMounted(async () => {
     return
   }
 
+  // Ensure cart is loaded before checking if empty
+  if (!cartStore.cart) {
+    await cartStore.fetchCart()
+  }
+
   if (isEmpty.value) {
     router.push('/cart')
     return

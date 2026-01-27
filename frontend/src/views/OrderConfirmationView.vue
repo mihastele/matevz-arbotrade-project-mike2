@@ -2,9 +2,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
+import { useCartStore } from '@/stores/cart'
 import type { Order } from '@/types'
 
 const route = useRoute()
+const cartStore = useCartStore()
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const isPaymentConfirmation = ref(false)
@@ -40,6 +42,9 @@ onMounted(async () => {
     if (paymentIntent) {
       isPaymentConfirmation.value = true
       paymentIntentId.value = paymentIntent
+      
+      // Clear the cart after successful payment
+      cartStore.resetLocalCart()
       
       // Try to find the order by payment intent
       // (order might not exist yet if webhook hasn't processed)

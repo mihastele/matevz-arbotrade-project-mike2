@@ -48,6 +48,26 @@ function getStatusColor(status: string): string {
   return colors[status] || 'bg-secondary-100 text-secondary-800'
 }
 
+function getPaymentStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    paid: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    failed: 'bg-red-100 text-red-800',
+    refunded: 'bg-purple-100 text-purple-800'
+  }
+  return colors[status] || 'bg-secondary-100 text-secondary-800'
+}
+
+function getPaymentStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    paid: 'Plačano',
+    pending: 'Neplačano',
+    failed: 'Neuspešno',
+    refunded: 'Povrnjeno'
+  }
+  return labels[status] || status
+}
+
 async function loadOrders() {
   loading.value = true
   try {
@@ -131,6 +151,9 @@ onMounted(loadOrders)
               Total
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+              Payment
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
               Status
             </th>
             <th class="px-6 py-3 text-right text-xs font-medium text-secondary-500 uppercase tracking-wider">
@@ -140,7 +163,7 @@ onMounted(loadOrders)
         </thead>
         <tbody class="bg-white divide-y divide-secondary-200">
           <tr v-if="orders.length === 0">
-            <td colspan="6" class="px-6 py-12 text-center text-secondary-500">
+            <td colspan="7" class="px-6 py-12 text-center text-secondary-500">
               No orders found
             </td>
           </tr>
@@ -160,6 +183,16 @@ onMounted(loadOrders)
             </td>
             <td class="px-6 py-4 whitespace-nowrap font-medium text-secondary-900">
               {{ formatPrice(order.total) }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span
+                :class="[
+                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                  getPaymentStatusColor(order.paymentStatus)
+                ]"
+              >
+                {{ getPaymentStatusLabel(order.paymentStatus) }}
+              </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <select

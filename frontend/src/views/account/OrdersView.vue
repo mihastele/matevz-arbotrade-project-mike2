@@ -33,6 +33,26 @@ function getStatusColor(status: string): string {
   return colors[status] || 'bg-secondary-100 text-secondary-800'
 }
 
+function getPaymentStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    paid: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    failed: 'bg-red-100 text-red-800',
+    refunded: 'bg-purple-100 text-purple-800'
+  }
+  return colors[status] || 'bg-secondary-100 text-secondary-800'
+}
+
+function getPaymentStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    paid: 'Plačano',
+    pending: 'Neplačano',
+    failed: 'Neuspešno',
+    refunded: 'Povrnjeno'
+  }
+  return labels[status] || status
+}
+
 onMounted(async () => {
   try {
     const response = await ordersApi.getMyOrders()
@@ -94,6 +114,14 @@ onMounted(async () => {
                   ]"
                 >
                   {{ order.status }}
+                </span>
+                <span 
+                  :class="[
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                    getPaymentStatusColor(order.paymentStatus)
+                  ]"
+                >
+                  {{ getPaymentStatusLabel(order.paymentStatus) }}
                 </span>
               </div>
               <p class="text-sm text-secondary-500 mt-1">
