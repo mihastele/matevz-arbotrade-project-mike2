@@ -30,6 +30,7 @@ const form = ref({
   price: '',
   salePrice: '',
   stock: '',
+  outOfStockMessage: '',
   categoryId: '',
   status: 'draft',
   isFeatured: false,
@@ -89,6 +90,7 @@ async function loadProduct() {
       price: String(product.price),
       salePrice: product.salePrice ? String(product.salePrice) : '',
       stock: String(product.stock),
+      outOfStockMessage: product.outOfStockMessage || '',
       categoryId: product.categoryId || '',
       status: product.status,
       isFeatured: product.isFeatured,
@@ -173,6 +175,7 @@ async function handleSubmit() {
       price: Number(form.value.price),
       salePrice: form.value.salePrice ? Number(form.value.salePrice) : undefined,
       stock: Number(form.value.stock),
+      outOfStockMessage: form.value.outOfStockMessage || undefined,
       categoryId: form.value.categoryId || undefined,
       status: form.value.status as 'draft' | 'published' | 'archived',
       isFeatured: form.value.isFeatured,
@@ -310,6 +313,15 @@ onMounted(() => {
             required
             :error="errors.stock"
           />
+        </div>
+
+        <div class="mt-4">
+          <BaseInput
+            v-model="form.outOfStockMessage"
+            label="Out of Stock Message"
+            placeholder="e.g., Available in 2 weeks, Back in stock soon..."
+          />
+          <p class="mt-1 text-sm text-secondary-500">Custom message displayed when product is out of stock</p>
         </div>
       </div>
 

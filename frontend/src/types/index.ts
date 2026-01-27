@@ -89,6 +89,7 @@ export interface Product {
   height?: number
   stock: number
   lowStockThreshold: number
+  outOfStockMessage?: string // Custom message when out of stock
   trackInventory: boolean
   allowBackorder: boolean
   status: 'draft' | 'published' | 'archived'

@@ -83,6 +83,9 @@ export class Product {
   @Column({ default: 0 })
   lowStockThreshold: number;
 
+  @Column({ nullable: true })
+  outOfStockMessage: string; // Custom message when out of stock (e.g., "Available in 2 weeks")
+
   @Column({ default: true })
   trackInventory: boolean;
 

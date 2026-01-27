@@ -175,6 +175,11 @@ export class CreateProductDto {
   @Min(0)
   lowStockThreshold?: number;
 
+  @ApiPropertyOptional({ description: 'Custom message to display when product is out of stock' })
+  @IsOptional()
+  @IsString()
+  outOfStockMessage?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

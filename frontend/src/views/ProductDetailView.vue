@@ -284,13 +284,20 @@ watch(() => route.params.slug, loadProduct)
               <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
               {{ t('products.inStock') }} ({{ stockQuantity }})
             </span>
-            <span 
-              v-else
-              class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"
-            >
-              <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-              {{ t('products.outOfStock') }}
-            </span>
+            <div v-else>
+              <span 
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"
+              >
+                <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                {{ t('products.outOfStock') }}
+              </span>
+              <p 
+                v-if="product.outOfStockMessage" 
+                class="mt-2 text-sm text-secondary-600 italic"
+              >
+                {{ product.outOfStockMessage }}
+              </p>
+            </div>
           </div>
 
           <!-- Short Description -->
