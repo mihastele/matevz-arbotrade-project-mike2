@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import { useCartStore } from '@/stores/cart'
+import { formatPrice, formatDateTime, formatDate } from '@/utils/formatters'
 import type { Order } from '@/types'
 
 const route = useRoute()
@@ -11,21 +12,6 @@ const order = ref<Order | null>(null)
 const loading = ref(true)
 const isPaymentConfirmation = ref(false)
 const paymentIntentId = ref<string | null>(null)
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('sl-SI', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(price)
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 // Check if this is a successful payment confirmation (order might still be processing)
 const showPaymentConfirmation = computed(() => {

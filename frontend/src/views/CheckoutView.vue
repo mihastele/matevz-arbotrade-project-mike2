@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -73,7 +73,8 @@ const isEmpty = computed(() => !cart.value?.items?.length)
 
 // Calculate total with tax (same as backend)
 const totalWithTax = computed(() => {
-  const subtotal = cartStore.subtotal || 0
+  // Ensure subtotal is converted to a number (API may return string from decimal column)
+  const subtotal = Number(cartStore.subtotal) || 0
   const tax = subtotal * 0.22
   return subtotal + tax
 })
@@ -175,6 +176,12 @@ async function mountPaymentElement() {
 }
 
 function goBack() {
+  // Destroy Stripe elements to avoid memory leaks and event capture issues
+  if (elements) {
+    elements.getElement('payment')?.destroy()
+    elements = null
+  }
+  paymentElementMounted.value = false
   currentStep.value = 1
   paymentError.value = ''
 }
@@ -264,6 +271,15 @@ onMounted(async () => {
     shippingAddress.value.lastName = authStore.user.lastName
     shippingAddress.value.email = authStore.user.email
     shippingAddress.value.phone = authStore.user.phone || ''
+  }
+})
+
+// Cleanup Stripe elements when component unmounts to prevent memory leaks
+// and navigation blocking issues
+onBeforeUnmount(() => {
+  if (elements) {
+    elements.getElement('payment')?.destroy()
+    elements = null
   }
 })
 </script>

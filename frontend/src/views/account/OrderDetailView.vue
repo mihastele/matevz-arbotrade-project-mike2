@@ -2,28 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
+import { formatPrice, formatDateTime } from '@/utils/formatters'
 import type { Order } from '@/types'
 
 const route = useRoute()
 const order = ref<Order | null>(null)
 const loading = ref(true)
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('sl-SI', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(price)
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
@@ -157,7 +141,7 @@ onMounted(async () => {
             <div class="space-y-3 text-sm">
               <div class="flex justify-between">
                 <span class="text-secondary-600">Order Date</span>
-                <span>{{ formatDate(order.createdAt) }}</span>
+                <span>{{ formatDateTime(order.createdAt) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-secondary-600">Subtotal</span>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="sl">
   <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,11 @@
     <meta
       name="description"
       content="Vaša profesionalna trgovina za arboristično opremo in dodatke"
+    />
+    <!-- Content Security Policy for Stripe integration -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://m.stripe.network; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-src https://js.stripe.com https://hooks.stripe.com; connect-src 'self' ws: wss: http://localhost:* https://localhost:* https://api.stripe.com https://m.stripe.network https://r.stripe.com;"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

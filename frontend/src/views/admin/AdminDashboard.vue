@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import { productsApi } from '@/api/products'
+import { formatPrice, formatDateTime } from '@/utils/formatters'
 import type { Order, Product } from '@/types'
 
 const stats = ref({
@@ -15,22 +16,6 @@ const stats = ref({
 const recentOrders = ref<Order[]>([])
 const lowStockProducts = ref<Product[]>([])
 const loading = ref(true)
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('sl-SI', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(price)
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
@@ -172,7 +157,7 @@ onMounted(async () => {
               </div>
               <div>
                 <p class="font-medium text-secondary-900">#{{ order.orderNumber }}</p>
-                <p class="text-sm text-secondary-500">{{ formatDate(order.createdAt) }}</p>
+                <p class="text-sm text-secondary-500">{{ formatDateTime(order.createdAt) }}</p>
               </div>
             </div>
             <div class="text-right">

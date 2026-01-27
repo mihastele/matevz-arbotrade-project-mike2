@@ -3,26 +3,12 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ordersApi } from '@/api/orders'
+import { formatPrice, formatDateTime } from '@/utils/formatters'
 import type { Order } from '@/types'
 
 const authStore = useAuthStore()
 const recentOrders = ref<Order[]>([])
 const loading = ref(true)
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('sl-SI', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(price)
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
@@ -150,7 +136,7 @@ onMounted(async () => {
         >
           <div>
             <p class="font-medium text-secondary-900">Order #{{ order.orderNumber }}</p>
-            <p class="text-sm text-secondary-500">{{ formatDate(order.createdAt) }}</p>
+            <p class="text-sm text-secondary-500">{{ formatDateTime(order.createdAt) }}</p>
           </div>
           <div class="text-right">
             <span 

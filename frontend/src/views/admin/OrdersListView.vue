@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import { useToast } from '@/composables/useToast'
+import { formatPrice, formatDateTime } from '@/utils/formatters'
 import type { Order, OrderStatus } from '@/types'
 
 const toast = useToast()
@@ -19,23 +20,6 @@ const statusOptions = [
   { value: 'delivered', label: 'Delivered' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('sl-SI', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(price)
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
@@ -179,7 +163,7 @@ onMounted(loadOrders)
               <p class="text-sm text-secondary-500">{{ order.user?.email }}</p>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
-              {{ formatDate(order.createdAt) }}
+              {{ formatDateTime(order.createdAt) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap font-medium text-secondary-900">
               {{ formatPrice(order.total) }}

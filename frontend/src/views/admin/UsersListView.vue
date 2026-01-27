@@ -4,6 +4,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { usersApi } from '@/api/users'
 import { useToast } from '@/composables/useToast'
+import { formatDateTime } from '@/utils/formatters'
 import type { User } from '@/types'
 
 const toast = useToast()
@@ -89,14 +90,6 @@ async function deleteUser(user: User) {
   } catch (error) {
     toast.error('Failed to delete user')
   }
-}
-
-function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('sl-SI', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 onMounted(loadUsers)
@@ -196,7 +189,7 @@ onMounted(loadUsers)
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
-              {{ formatDate(user.createdAt) }}
+              {{ formatDateTime(user.createdAt) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <button
