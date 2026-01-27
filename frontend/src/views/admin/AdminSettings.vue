@@ -62,11 +62,12 @@ onMounted(loadSettings)
         Configure your Stripe payment gateway credentials. These settings are stored in the database.
       </p>
 
-      <form @submit.prevent="saveSettings" class="space-y-4 max-w-2xl">
+      <form @submit.prevent="saveSettings" class="space-y-4 max-w-2xl" autocomplete="off">
         <BaseInput
           v-model="stripePublishableKey"
           label="Publishable Key"
           placeholder="pk_test_..."
+          autocomplete="off"
         />
 
         <BaseInput
@@ -74,6 +75,7 @@ onMounted(loadSettings)
           label="Secret Key"
           type="password"
           placeholder="sk_test_..."
+          autocomplete="new-password"
         />
 
         <BaseInput
@@ -81,6 +83,7 @@ onMounted(loadSettings)
           label="Webhook Secret"
           type="password"
           placeholder="whsec_..."
+          autocomplete="new-password"
         />
 
         <div class="pt-4">
